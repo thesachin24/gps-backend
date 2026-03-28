@@ -12,6 +12,7 @@ require('pg').defaults.parseInt8 = true
 import i18n from 'i18n';
 // import './src/utils/cron';
 import cors from 'cors';
+import { startGpsMqttListener, stopGpsMqttListener } from './src/gps/mqttGpsListener';
 const app = express();
 
 //Migration Scripts
@@ -46,6 +47,7 @@ sequelize
   .authenticate()
   .then(() => {
     logger.info('Database connection has been established successfully.');
+    startGpsMqttListener();
     app.listen(process.env.PORT, () => {
       logger.info(`Example app listening on port ${process.env.PORT}!`);
     });
@@ -61,4 +63,14 @@ process.on('uncaughtException', err => {
 
 process.on('unhandledRejection', (reason, p) => {
   logger.info(`Unhandled Rejection at: ${p}, reason:, ${reason}`);
+});
+
+process.on('SIGINT', () => {
+  stopGpsMqttListener();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  stopGpsMqttListener();
+  process.exit(0);
 });
