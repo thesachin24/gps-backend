@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  server:
+    build: .
+    container_name: vkeel_stage
+    restart: always
+    command: npm start
+    ports:
+      - 8082:8080
+    volumes:
+      - ./:/data
+    depends_on:
+      - mongo
+  mongo:
+    container_name: mongodb-dev
+    image: mongo
+    env_file: .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$DB_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD=$DB_PASSWORD
+    ports:
+      - 27019:27017
+    volumes:
+      - ./database/db:/data/db

@@ -1,0 +1,9 @@
+{
+	"OTP_CONFIRM": {
+		"SMS": " <#> Please use OTP {{verification_code}} to login to your GPS account - Purple Panda Enterprises Ohhk2MMRcEd"
+	},
+	"SUBSCRIPTION_CHARGED": {
+		"SUBJECT": "Subscription Activated",
+		"NOTIFICATION": "Your subscription has been activated successfully. Thank you for your subscription."
+	}
+}
