@@ -8,4 +8,6 @@ obfuscated/
 .vscode
 .wwebjs_auth
 .wwebjs_cache
+
 src/config/serviceAccountKey.json
+serviceAccountKey.json
