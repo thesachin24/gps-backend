@@ -78,6 +78,7 @@ class GpsMqttListener {
     });
 
     this.client.on('message', (topic, messageBuffer) => {
+      console.log('messageBuffer', messageBuffer);
       const rawMessage = messageBuffer.toString('utf-8').trim();
       if (!rawMessage) {
         return;
