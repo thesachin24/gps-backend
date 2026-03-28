@@ -5,7 +5,7 @@ import i18n from 'i18n';
 import serviceAccount from '../config/serviceAccountKey.json';
 
 firebase.initializeApp({
-  credential: firebase.credential.cert(serviceAccount),
+  // credential: firebase.credential.cert(serviceAccount),
   databaseURL: `https://${serviceAccount.project_id}-default-rtdb.asia-southeast1.firebasedatabase.app`
 });
 
