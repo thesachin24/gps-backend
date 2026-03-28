@@ -27,6 +27,7 @@ class GpsMqttListener {
     this.client = null;
     this.started = false;
     this.topics = getTopics();
+    this.clientId = null;
   }
 
   start() {
@@ -47,12 +48,13 @@ class GpsMqttListener {
       clean: true,
       reconnectPeriod: Number(process.env.GPS_MQTT_RECONNECT_MS || 5000)
     };
+    this.clientId = options.clientId;
 
     this.client = mqtt.connect(brokerUrl, options);
     this.started = true;
 
     this.client.on('connect', () => {
-      logger.info(`GPS MQTT connected: ${brokerUrl}`);
+      logger.info(`GPS MQTT connected: ${brokerUrl} (clientId=${this.clientId})`);
       this.topics.forEach(topic => {
         this.client.subscribe(topic, { qos: Number(process.env.GPS_MQTT_QOS || 1) }, err => {
           if (err) {
@@ -65,11 +67,23 @@ class GpsMqttListener {
     });
 
     this.client.on('reconnect', () => {
-      logger.info('GPS MQTT reconnecting...');
+      logger.info(`GPS MQTT reconnecting... (clientId=${this.clientId})`);
     });
 
     this.client.on('error', err => {
-      logger.error(`GPS MQTT error: ${err.message}`);
+      logger.error(`GPS MQTT error (clientId=${this.clientId}): ${err.message}`);
+    });
+
+    this.client.on('offline', () => {
+      logger.info(`GPS MQTT offline (clientId=${this.clientId})`);
+    });
+
+    this.client.on('close', () => {
+      logger.info(`GPS MQTT connection closed (clientId=${this.clientId})`);
+    });
+
+    this.client.on('end', () => {
+      logger.info(`GPS MQTT client ended (clientId=${this.clientId})`);
     });
 
     this.client.on('message', (topic, messageBuffer) => {
@@ -132,6 +146,7 @@ class GpsMqttListener {
     this.client.end(true);
     this.client = null;
     this.started = false;
+    this.clientId = null;
     logger.info('GPS MQTT listener stopped.');
   }
 
