@@ -3,11 +3,6 @@ import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 
 const DEFAULT_TOPICS = ['gps/+/data'];
-const DEFAULT_BOOTSTRAP_COMMANDS = [
-  'GMT,E,0,0#',
-  'APN,airteliot.com#',
-  'SERVER,0,174.138.122.138,5023,0#'
-];
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -78,7 +73,6 @@ class GpsMqttListener {
     });
 
     this.client.on('message', (topic, messageBuffer) => {
-      console.log('messageBuffer', messageBuffer);
       const rawMessage = messageBuffer.toString('utf-8').trim();
       if (!rawMessage) {
         return;
@@ -101,8 +95,33 @@ class GpsMqttListener {
         logger.info(`GPS MSG ${JSON.stringify(event)}`);
       }
     });
+  }
 
-    logger.info(`GPS MQTT bootstrap commands: ${JSON.stringify(DEFAULT_BOOTSTRAP_COMMANDS)}`);
+  publish(topic, payload) {
+    if (!this.client || !this.started) {
+      logger.error('GPS MQTT publish skipped: client is not connected.');
+      return false;
+    }
+
+    try {
+      const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      this.client.publish(
+        topic,
+        message,
+        { qos: Number(process.env.GPS_MQTT_PUBLISH_QOS || process.env.GPS_MQTT_QOS || 1), retain: false },
+        err => {
+          if (err) {
+            logger.error(`GPS MQTT publish failed (${topic}): ${err.message}`);
+            return;
+          }
+          logger.info(`GPS MQTT published: ${topic}`);
+        }
+      );
+      return true;
+    } catch (err) {
+      logger.error(`GPS MQTT publish serialization failed: ${err.message}`);
+      return false;
+    }
   }
 
   stop() {
@@ -116,14 +135,11 @@ class GpsMqttListener {
     logger.info('GPS MQTT listener stopped.');
   }
 
-  getBootstrapCommands() {
-    return DEFAULT_BOOTSTRAP_COMMANDS;
-  }
 }
 
 const gpsMqttListener = new GpsMqttListener();
 
 export const startGpsMqttListener = () => gpsMqttListener.start();
 export const stopGpsMqttListener = () => gpsMqttListener.stop();
-export const getGpsBootstrapCommands = () => gpsMqttListener.getBootstrapCommands();
+export const publishGpsToMqtt = (topic, payload) => gpsMqttListener.publish(topic, payload);
 

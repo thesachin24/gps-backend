@@ -1,0 +1,174 @@
+import net from 'net';
+import logger from '../config/logger';
+import { parseGpsPayload } from './gpsPayloadParser';
+import { publishGpsToMqtt } from './mqttGpsListener';
+
+const toBoolean = value => {
+  if (value === undefined || value === null) {
+    return false;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+};
+
+const readDelimitedMessages = buffer => {
+  const messages = [];
+  let rest = buffer;
+
+  while (rest.length) {
+    const hashIndex = rest.indexOf('#');
+    const newLineIndex = rest.indexOf('\n');
+
+    if (hashIndex === -1 && newLineIndex === -1) {
+      break;
+    }
+
+    let delimiterIndex = -1;
+    let includeHash = false;
+    if (hashIndex !== -1 && (newLineIndex === -1 || hashIndex < newLineIndex)) {
+      delimiterIndex = hashIndex;
+      includeHash = true;
+    } else {
+      delimiterIndex = newLineIndex;
+    }
+
+    const message = includeHash
+      ? rest.slice(0, delimiterIndex + 1)
+      : rest.slice(0, delimiterIndex);
+
+    if (message.trim()) {
+      messages.push(message.trim());
+    }
+
+    rest = rest.slice(delimiterIndex + 1);
+  }
+
+  return { messages, rest };
+};
+
+const inferDeviceId = (parsed, rawMessage, socket) => {
+  if (parsed?.data?.device_id) {
+    return String(parsed.data.device_id);
+  }
+  if (parsed?.data?.imei) {
+    return String(parsed.data.imei);
+  }
+
+  // Common tracker frames often include 15-digit IMEI.
+  const imeiMatch = String(rawMessage).match(/\b\d{15}\b/);
+  if (imeiMatch && imeiMatch[0]) {
+    return imeiMatch[0];
+  }
+
+  const remoteAddress = (socket.remoteAddress || 'unknown').replace(/[:.]/g, '_');
+  const remotePort = socket.remotePort || '0';
+  return `tcp_${remoteAddress}_${remotePort}`;
+};
+
+const getBridgeTopic = deviceId => {
+  const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
+  return `${prefix}/${deviceId}/data`;
+};
+
+class GpsTcpListener {
+  constructor() {
+    this.server = null;
+    this.started = false;
+  }
+
+  start() {
+    if (this.started) {
+      return;
+    }
+
+    if (!toBoolean(process.env.GPS_TCP_ENABLED)) {
+      logger.info('GPS TCP listener is disabled. Set GPS_TCP_ENABLED=true to enable.');
+      return;
+    }
+
+    const host = process.env.GPS_TCP_HOST || '0.0.0.0';
+    const port = Number(process.env.GPS_TCP_PORT || 5023);
+
+    this.server = net.createServer(socket => {
+      const remote = `${socket.remoteAddress}:${socket.remotePort}`;
+      socket.setEncoding('utf8');
+      socket._gpsBuffer = '';
+
+      logger.info(`GPS TCP client connected: ${remote}`);
+
+      socket.on('data', chunk => {
+        try {
+          socket._gpsBuffer = `${socket._gpsBuffer || ''}${chunk}`;
+
+          // Safety guard for malformed noisy streams.
+          if (socket._gpsBuffer.length > 65535) {
+            socket._gpsBuffer = socket._gpsBuffer.slice(-32768);
+          }
+
+          const { messages, rest } = readDelimitedMessages(socket._gpsBuffer);
+          socket._gpsBuffer = rest;
+
+          messages.forEach(rawMessage => {
+            const parsed = parseGpsPayload(rawMessage);
+            const deviceId = inferDeviceId(parsed, rawMessage, socket);
+            const event = {
+              transport: 'tcp',
+              deviceId,
+              remoteAddress: socket.remoteAddress || null,
+              remotePort: socket.remotePort || null,
+              receivedAt: new Date().toISOString(),
+              raw: rawMessage,
+              parsed
+            };
+
+            if (parsed.type === 'gps_fix') {
+              logger.info(`GPS TCP FIX ${JSON.stringify(event)}`);
+            } else {
+              logger.info(`GPS TCP MSG ${JSON.stringify(event)}`);
+            }
+
+            const bridgeTopic = getBridgeTopic(deviceId);
+            publishGpsToMqtt(bridgeTopic, event);
+          });
+        } catch (err) {
+          logger.error(`GPS TCP parse error: ${err.message}`);
+        }
+      });
+
+      socket.on('error', err => {
+        logger.error(`GPS TCP socket error (${remote}): ${err.message}`);
+      });
+
+      socket.on('close', () => {
+        logger.info(`GPS TCP client disconnected: ${remote}`);
+      });
+    });
+
+    this.server.on('error', err => {
+      logger.error(`GPS TCP server error: ${err.message}`);
+    });
+
+    this.server.listen(port, host, () => {
+      this.started = true;
+      logger.info(`GPS TCP listening on ${host}:${port}`);
+    });
+  }
+
+  stop() {
+    if (!this.server) {
+      return;
+    }
+
+    this.server.close(() => {
+      logger.info('GPS TCP listener stopped.');
+    });
+
+    this.server = null;
+    this.started = false;
+  }
+}
+
+const gpsTcpListener = new GpsTcpListener();
+
+export const startGpsTcpListener = () => gpsTcpListener.start();
+export const stopGpsTcpListener = () => gpsTcpListener.stop();
+

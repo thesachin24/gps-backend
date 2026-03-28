@@ -13,6 +13,7 @@ import i18n from 'i18n';
 // import './src/utils/cron';
 import cors from 'cors';
 import { startGpsMqttListener, stopGpsMqttListener } from './src/gps/mqttGpsListener';
+import { startGpsTcpListener, stopGpsTcpListener } from './src/gps/tcpGpsListener';
 const app = express();
 
 //Migration Scripts
@@ -48,6 +49,7 @@ sequelize
   .then(() => {
     logger.info('Database connection has been established successfully.');
     startGpsMqttListener();
+    startGpsTcpListener();
     app.listen(process.env.PORT, () => {
       logger.info(`Example app listening on port ${process.env.PORT}!`);
     });
@@ -67,10 +69,12 @@ process.on('unhandledRejection', (reason, p) => {
 
 process.on('SIGINT', () => {
   stopGpsMqttListener();
+  stopGpsTcpListener();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   stopGpsMqttListener();
+  stopGpsTcpListener();
   process.exit(0);
 });
