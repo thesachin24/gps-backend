@@ -12,11 +12,21 @@ const toBoolean = value => {
 
 const readDelimitedMessages = buffer => {
   const messages = [];
-  let rest = buffer;
+  let rest = Buffer.isBuffer(buffer) ? buffer : Buffer.from(String(buffer || ''), 'utf8');
 
-  while (rest.length) {
-    const hashIndex = rest.indexOf('#');
-    const newLineIndex = rest.indexOf('\n');
+  while (rest.length > 0) {
+    if (rest.length >= 3 && rest[0] === 0x78 && rest[1] === 0x78) {
+      const packetLength = rest[2] + 5;
+      if (rest.length < packetLength) {
+        break;
+      }
+      messages.push(rest.subarray(0, packetLength));
+      rest = rest.subarray(packetLength);
+      continue;
+    }
+
+    const hashIndex = rest.indexOf(0x23); // '#'
+    const newLineIndex = rest.indexOf(0x0a); // '\n'
 
     if (hashIndex === -1 && newLineIndex === -1) {
       break;
@@ -32,20 +42,23 @@ const readDelimitedMessages = buffer => {
     }
 
     const message = includeHash
-      ? rest.slice(0, delimiterIndex + 1)
-      : rest.slice(0, delimiterIndex);
+      ? rest.subarray(0, delimiterIndex + 1)
+      : rest.subarray(0, delimiterIndex);
 
-    if (message.trim()) {
-      messages.push(message.trim());
+    if (message.length) {
+      messages.push(message);
     }
 
-    rest = rest.slice(delimiterIndex + 1);
+    rest = rest.subarray(delimiterIndex + 1);
   }
 
   return { messages, rest };
 };
 
 const inferDeviceId = (parsed, rawMessage, socket) => {
+  if (parsed?.imei) {
+    return String(parsed.imei);
+  }
   if (parsed?.data?.device_id) {
     return String(parsed.data.device_id);
   }
@@ -90,18 +103,17 @@ class GpsTcpListener {
 
     this.server = net.createServer(socket => {
       const remote = `${socket.remoteAddress}:${socket.remotePort}`;
-      socket.setEncoding('utf8');
-      socket._gpsBuffer = '';
+      socket._gpsBuffer = Buffer.alloc(0);
 
       logger.info(`GPS TCP client connected: ${remote}`);
 
       socket.on('data', chunk => {
         try {
-          socket._gpsBuffer = `${socket._gpsBuffer || ''}${chunk}`;
+          socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
           // Safety guard for malformed noisy streams.
           if (socket._gpsBuffer.length > 65535) {
-            socket._gpsBuffer = socket._gpsBuffer.slice(-32768);
+            socket._gpsBuffer = socket._gpsBuffer.subarray(socket._gpsBuffer.length - 32768);
           }
 
           const { messages, rest } = readDelimitedMessages(socket._gpsBuffer);
@@ -110,13 +122,17 @@ class GpsTcpListener {
           messages.forEach(rawMessage => {
             const parsed = parseGpsPayload(rawMessage);
             const deviceId = inferDeviceId(parsed, rawMessage, socket);
+            const rawPayload = Buffer.isBuffer(rawMessage)
+              ? rawMessage.toString('hex')
+              : String(rawMessage);
             const event = {
               transport: 'tcp',
               deviceId,
               remoteAddress: socket.remoteAddress || null,
               remotePort: socket.remotePort || null,
               receivedAt: new Date().toISOString(),
-              raw: rawMessage,
+              raw: rawPayload,
+              rawEncoding: Buffer.isBuffer(rawMessage) ? 'hex' : 'utf8',
               parsed
             };
 
@@ -128,6 +144,11 @@ class GpsTcpListener {
 
             const bridgeTopic = getBridgeTopic(deviceId);
             publishGpsToMqtt(bridgeTopic, event);
+
+            if (parsed?.ackHex) {
+              socket.write(Buffer.from(parsed.ackHex, 'hex'));
+              logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
+            }
           });
         } catch (err) {
           logger.error(`GPS TCP parse error: ${err.message}`);
