@@ -42,7 +42,7 @@ class GpsMqttListener {
 
     const brokerUrl = process.env.GPS_MQTT_URL || 'mqtt://localhost:1883';
     const options = {
-      clientId: process.env.GPS_MQTT_CLIENT_ID || `gps-backend-${Math.random().toString(16).slice(2, 10)}`,
+      // clientId: process.env.GPS_MQTT_CLIENT_ID || `gps-backend-${Math.random().toString(16).slice(2, 10)}`,
       username: process.env.GPS_MQTT_USERNAME || undefined,
       password: process.env.GPS_MQTT_PASSWORD || undefined,
       clean: true,
