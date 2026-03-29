@@ -150,10 +150,14 @@ const crc16Itu = bytes => {
 const toProtocolName = protocolNo => {
   const names = {
     0x01: 'login',
+    0x10: 'gps',
+    0x11: 'lbs',
     0x12: 'gps_lbs',
     0x13: 'heartbeat',
     0x16: 'alarm',
+    0x17: 'command_response',
     0x22: 'gps_lbs_extended',
+    0x80: 'server_response',
     0x94: 'information_transmission'
   };
   return names[protocolNo] || `protocol_${protocolNo}`;
