@@ -159,6 +159,60 @@ const toProtocolName = protocolNo => {
   return names[protocolNo] || `protocol_${protocolNo}`;
 };
 
+const decodeGt06DateTime = bytes => {
+  if (!bytes || bytes.length < 6) {
+    return null;
+  }
+  const year = 2000 + bytes[0];
+  const month = bytes[1];
+  const day = bytes[2];
+  const hour = bytes[3];
+  const minute = bytes[4];
+  const second = bytes[5];
+  const iso = new Date(Date.UTC(year, month - 1, day, hour, minute, second)).toISOString();
+  return iso;
+};
+
+const decodeGt06GpsLbs = infoBuffer => {
+  if (!infoBuffer || infoBuffer.length < 12) {
+    return null;
+  }
+
+  const timestamp = decodeGt06DateTime(infoBuffer.subarray(0, 6));
+  const gpsInfoSat = infoBuffer[6];
+  const gpsInfoLength = (gpsInfoSat & 0xf0) >> 4;
+  const satellites = gpsInfoSat & 0x0f;
+  const rawLatitude = infoBuffer.readUInt32BE(7);
+  const rawLongitude = infoBuffer.readUInt32BE(11);
+  const speed = infoBuffer[15];
+  const courseStatus = infoBuffer.readUInt16BE(16);
+  const heading = courseStatus & 0x03ff;
+
+  let latitude = rawLatitude / 1800000;
+  let longitude = rawLongitude / 1800000;
+
+  // GT06 course/status flags:
+  // bit10 set => West, bit11 clear => South.
+  const isWest = (courseStatus & 0x0400) !== 0;
+  const isSouth = (courseStatus & 0x0800) === 0;
+  if (isSouth) {
+    latitude *= -1;
+  }
+  if (isWest) {
+    longitude *= -1;
+  }
+
+  return {
+    timestamp,
+    satellites,
+    gpsInfoLength,
+    latitude: Number(latitude.toFixed(6)),
+    longitude: Number(longitude.toFixed(6)),
+    speed,
+    heading
+  };
+};
+
 const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
   const serialHi = (serialNo >> 8) & 0xff;
   const serialLo = serialNo & 0xff;
@@ -215,10 +269,17 @@ const parseGt06Payload = rawBuffer => {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x13) {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
-  } else if (protocolNo === 0x94 && infoBuffer.length >= 8) {
-    // Some trackers include IMEI in 0x94 information packets.
-    const imeiHex = infoBuffer.subarray(0, 8).toString('hex');
-    parsed.imei = imeiHex.replace(/^0/, '');
+  } else if (protocolNo === 0x12) {
+    const gps = decodeGt06GpsLbs(infoBuffer);
+    if (gps) {
+      parsed.latitude = gps.latitude;
+      parsed.longitude = gps.longitude;
+      parsed.speed = gps.speed;
+      parsed.heading = gps.heading;
+      parsed.timestamp = gps.timestamp;
+      parsed.satellites = gps.satellites;
+      parsed.type = 'gps_fix';
+    }
   }
 
   return parsed;
