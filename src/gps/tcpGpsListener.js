@@ -25,6 +25,16 @@ const readDelimitedMessages = buffer => {
       continue;
     }
 
+    if (rest.length >= 4 && rest[0] === 0x79 && rest[1] === 0x79) {
+      const packetLength = rest.readUInt16BE(2) + 6;
+      if (rest.length < packetLength) {
+        break;
+      }
+      messages.push(rest.subarray(0, packetLength));
+      rest = rest.subarray(packetLength);
+      continue;
+    }
+
     const hashIndex = rest.indexOf(0x23); // '#'
     const newLineIndex = rest.indexOf(0x0a); // '\n'
 
@@ -56,6 +66,9 @@ const readDelimitedMessages = buffer => {
 };
 
 const inferDeviceId = (parsed, rawMessage, socket) => {
+  if (socket?._gpsDeviceId) {
+    return socket._gpsDeviceId;
+  }
   if (parsed?.imei) {
     return String(parsed.imei);
   }
@@ -121,6 +134,9 @@ class GpsTcpListener {
 
           messages.forEach(rawMessage => {
             const parsed = parseGpsPayload(rawMessage);
+            if (parsed?.imei) {
+              socket._gpsDeviceId = String(parsed.imei);
+            }
             const deviceId = inferDeviceId(parsed, rawMessage, socket);
             const rawPayload = Buffer.isBuffer(rawMessage)
               ? rawMessage.toString('hex')

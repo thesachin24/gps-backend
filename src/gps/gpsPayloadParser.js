@@ -153,54 +153,72 @@ const toProtocolName = protocolNo => {
     0x12: 'gps_lbs',
     0x13: 'heartbeat',
     0x16: 'alarm',
-    0x22: 'gps_lbs_extended'
+    0x22: 'gps_lbs_extended',
+    0x94: 'information_transmission'
   };
   return names[protocolNo] || `protocol_${protocolNo}`;
 };
 
-const buildGt06AckHex = (protocolNo, serialNo) => {
+const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
   const serialHi = (serialNo >> 8) & 0xff;
   const serialLo = serialNo & 0xff;
-  const body = Buffer.from([0x05, protocolNo, serialHi, serialLo]);
+  const body = Buffer.from([0x05, protocolNo, serialHi, serialLo]); // length + protocol + serial
   const crc = crc16Itu(body);
   const crcHi = (crc >> 8) & 0xff;
   const crcLo = crc & 0xff;
-  return Buffer.from([0x78, 0x78, ...body, crcHi, crcLo, 0x0d, 0x0a]).toString('hex');
+  const startBytes = header === 0x7979 ? [0x79, 0x79, 0x00] : [0x78, 0x78];
+  return Buffer.from([...startBytes, ...body, crcHi, crcLo, 0x0d, 0x0a]).toString('hex');
 };
 
 const parseGt06Payload = rawBuffer => {
   if (!Buffer.isBuffer(rawBuffer) || rawBuffer.length < 10) {
     return null;
   }
-  if (rawBuffer[0] !== 0x78 || rawBuffer[1] !== 0x78) {
+
+  const is7878 = rawBuffer[0] === 0x78 && rawBuffer[1] === 0x78;
+  const is7979 = rawBuffer[0] === 0x79 && rawBuffer[1] === 0x79;
+  if (!is7878 && !is7979) {
     return null;
   }
   if (rawBuffer[rawBuffer.length - 2] !== 0x0d || rawBuffer[rawBuffer.length - 1] !== 0x0a) {
     return null;
   }
 
-  const length = rawBuffer[2];
-  if (rawBuffer.length !== length + 5) {
+  const header = is7979 ? 0x7979 : 0x7878;
+  const lengthBytes = is7979 ? 2 : 1;
+  const expectedLength = is7979 ? rawBuffer.readUInt16BE(2) + 6 : rawBuffer[2] + 5;
+  if (rawBuffer.length !== expectedLength) {
     return null;
   }
 
-  const protocolNo = rawBuffer[3];
+  const protocolIndex = 2 + lengthBytes;
+  const protocolNo = rawBuffer[protocolIndex];
   const protocol = toProtocolName(protocolNo);
-  const serialNo = rawBuffer.readUInt16BE(rawBuffer.length - 6);
+  const packetLength = is7979 ? rawBuffer.readUInt16BE(2) : rawBuffer[2];
+  const infoLength = packetLength - 5; // packet = protocol(1) + info + serial(2) + crc(2)
+  const infoStart = protocolIndex + 1;
+  const infoEnd = infoStart + infoLength;
+  const infoBuffer = rawBuffer.subarray(infoStart, infoEnd);
+  const serialNo = rawBuffer.readUInt16BE(infoEnd);
   const parsed = {
     type: 'gt06_packet',
+    header: is7979 ? '7979' : '7878',
     protocolNo,
     protocol,
     serialNo,
     rawHex: rawBuffer.toString('hex')
   };
 
-  if (protocolNo === 0x01 && rawBuffer.length >= 18) {
-    const imeiHex = rawBuffer.subarray(4, 12).toString('hex');
+  if (protocolNo === 0x01 && infoBuffer.length >= 8) {
+    const imeiHex = infoBuffer.subarray(0, 8).toString('hex');
     parsed.imei = imeiHex.replace(/^0/, '');
-    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo);
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x13) {
-    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo);
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
+  } else if (protocolNo === 0x94 && infoBuffer.length >= 8) {
+    // Some trackers include IMEI in 0x94 information packets.
+    const imeiHex = infoBuffer.subarray(0, 8).toString('hex');
+    parsed.imei = imeiHex.replace(/^0/, '');
   }
 
   return parsed;
