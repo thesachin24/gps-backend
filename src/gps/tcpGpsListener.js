@@ -133,6 +133,8 @@ class GpsTcpListener {
           socket._gpsBuffer = rest;
 
           messages.forEach(rawMessage => {
+            console.log('rawMessage Start--->', rawMessage);
+            console.log('rawMessage End--->');
             const parsed = parseGpsPayload(rawMessage);
             if (parsed?.imei) {
               socket._gpsDeviceId = String(parsed.imei);
