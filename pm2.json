@@ -4,6 +4,11 @@
             "name": "gps",
             "script": "npm",
             "args" : "start"
+        },
+        {
+            "name": "gps-delhi-simulator",
+            "script": "npm",
+            "args" : "run sim:gps-delhi"
         }
     ]
 }
