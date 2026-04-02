@@ -195,10 +195,10 @@ const decodeGt06GpsLbs = infoBuffer => {
   let latitude = rawLatitude / 1800000;
   let longitude = rawLongitude / 1800000;
 
-  // GT06 course/status flags:
-  // bit10 set => West, bit11 clear => South.
-  const isWest = (courseStatus & 0x0400) !== 0;
-  const isSouth = (courseStatus & 0x0800) === 0;
+  // GT06 course/status flags for this tracker variant:
+  // bit10 clear => West, bit11 set => South.
+  const isWest = (courseStatus & 0x0400) === 0;
+  const isSouth = (courseStatus & 0x0800) !== 0;
   if (isSouth) {
     latitude *= -1;
   }
