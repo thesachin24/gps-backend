@@ -5,3 +5,4 @@ export { common } from './common';
 export { admin } from './admin';
 export { banner } from './banner';
 export { payment } from './payment';
+export { deviceLocation } from './deviceLocation';

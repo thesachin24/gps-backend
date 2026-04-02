@@ -2,6 +2,7 @@ import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsListener';
+import { persistGpsLbsLocation } from '../service/deviceLocationService';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -162,6 +163,12 @@ class GpsTcpListener {
 
             const bridgeTopic = getBridgeTopic(deviceId);
             publishGpsToMqtt(bridgeTopic, event);
+
+            persistGpsLbsLocation({
+              deviceId,
+              parsed,
+              transport: 'tcp'
+            });
 
             if (parsed?.ackHex) {
               socket.write(Buffer.from(parsed.ackHex, 'hex'));

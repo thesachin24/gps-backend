@@ -166,7 +166,5 @@ export const SUBSCRIPTION_STATUS = Object.freeze({
 });
 
 export const TEST_NUMBERS = [
-  // '+919871102231',
-  '+919999453558',
-  '+917836944462'
+  '+919871102231',
 ]

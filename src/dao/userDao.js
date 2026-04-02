@@ -100,8 +100,9 @@ export const createUser = async (body, t) => {
 };
 
 export const getUserWithIgnoreCase = async (key, value, attributes) => {
+  console.log(key, value, attributes,"key, value, attributes,,,,")
   return userModel.findOne({
-    attributes: attributes || REGISTRATION_ID,
+    attributes: attributes || USER_LOGIN_FIELDS,
     where: sequelize.where(
       sequelize.fn('lower', sequelize.col(key)),
       value

@@ -177,6 +177,7 @@ export const userLogin = async body => {
 export const userVerify = async body => {
   const { phone, otp, device_id, device_type, push_token } = body;
   const user = await getUserWithIgnoreCase(MOBILE, phone, USER_LOGIN_FIELDS);
+  console.log(user,"user,,,,")
   if (!user) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.USER_NOT_FOUND);
   }

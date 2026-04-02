@@ -19,3 +19,18 @@ export const auth = {
       .required()
   })
 };
+
+export const verify = {
+  body: Joi.object({
+    phone: Joi.string()
+      .required()
+      .error(() => {
+        return { message: MESSAGE_CONSTANTS.INVALID_MOBILE };
+      }),
+    otp: Joi.string()
+      .required()
+      .error(() => {
+        return { message: MESSAGE_CONSTANTS.INVALID_OTP };
+      })
+  })
+};

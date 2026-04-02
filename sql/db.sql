@@ -90,6 +90,30 @@ ALTER SEQUENCE user_device_id_seq OWNED BY user_device.id;
 ------------------------------------------------------------------------------------------------------------------------
 
 
+CREATE TABLE hardware_devices (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    device_id VARCHAR(255) NOT NULL UNIQUE,
+    device_type VARCHAR(255) NOT NULL DEFAULT 'GPS_TRACKER',
+    name VARCHAR(255),
+    metadata JSONB,
+    latitude DECIMAL(9, 6),
+    longitude DECIMAL(9, 6),
+    last_recorded_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_hardware_devices_user_id
+    ON hardware_devices (user_id);
+
+CREATE INDEX idx_hardware_devices_is_active
+    ON hardware_devices (is_active);
+
+------------------------------------------------------------------------------------------------------------------------
+
+
 CREATE TABLE options (
   id BIGSERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -143,3 +167,33 @@ INSERT INTO options (id, name, value, type, category, data_type, created_at, upd
 
 
 
+
+------------------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE device_locations (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    device_id VARCHAR(255) NOT NULL,
+    device_type VARCHAR(255) NOT NULL,
+    latitude DECIMAL(9, 6) NOT NULL,
+    longitude DECIMAL(9, 6) NOT NULL,
+    recorded_at TIMESTAMPTZ NOT NULL,
+    accuracy FLOAT,
+    speed FLOAT,
+    heading FLOAT,
+    altitude FLOAT,
+    source VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_device_locations_device_recorded_at
+    ON device_locations (device_id, recorded_at DESC);
+
+CREATE INDEX idx_device_locations_recorded_at
+    ON device_locations (recorded_at DESC);
+
+CREATE INDEX idx_device_locations_user_id
+    ON device_locations (user_id);
+
+------------------------------------------------------------------------------------------------------------------------
