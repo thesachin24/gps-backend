@@ -92,9 +92,21 @@ const inferDeviceId = (parsed, rawMessage, socket) => {
 };
 
 const getBridgeTopic = deviceId => {
-  const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
-  return `${prefix}/${deviceId}/data`;
+  // const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
+  // return `${prefix}/${deviceId}/data`;
+  // const TOPIC = process.env.SIM_MQTT_TOPIC || process.env.GPS_SIM_TOPIC || `gps/${deviceId}/data`;
+  return `gps/delhi-sim-001/data`;
 };
+
+const buildBridgePayload = (deviceId, parsed) => ({
+  device_id: deviceId,
+  lat: parsed?.latitude ?? null,
+  lng: parsed?.longitude ?? null,
+  speed: parsed?.speed ?? null,
+  heading: parsed?.heading ?? null,
+  timestamp: parsed?.timestamp || new Date().toISOString(),
+  source: parsed?.protocol || 'gps_lbs'
+});
 
 class GpsTcpListener {
   constructor() {
@@ -122,15 +134,15 @@ class GpsTcpListener {
     };
 
     logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event)}`);
-    publishGpsToMqtt(getBridgeTopic(deviceId), event);
+    // publishGpsToMqtt(getBridgeTopic(deviceId), buildBridgePayload(deviceId, parsed));
 
     if (parsed?.protocol === 'gps_lbs') {
-      void saveGpsLocation({
-        deviceId,
-        parsed,
-        transport: 'tcp',
-        source: 'gps_lbs'
-      });
+      // Publish GPS location to MQTT bridge
+      const payload = buildBridgePayload(deviceId, parsed);
+      publishGpsToMqtt(getBridgeTopic(deviceId), payload);
+      
+      // Save GPS location to database
+      void saveGpsLocation({ deviceId, payload, metadata: parsed });
     }
 
     if (parsed?.ackHex) {
