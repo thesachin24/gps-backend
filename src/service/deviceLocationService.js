@@ -1,14 +1,14 @@
-import logger from '../config/logger';
-import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR } from '../constants';
+import Sequelize from 'sequelize';
+import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, OFFSET, PAGE_LIMIT } from '../constants';
 import { CustomError } from '../utils';
 import {
   createDeviceLocation,
+  getDeviceLocationList,
   deleteDeviceLocation,
   getDeviceLocation,
   getDeviceLocationById,
   updateDeviceLocation
 } from '../dao/deviceLocationDao';
-import { getHardwareDevice, updateHardwareDevice } from '../dao/hardwareDeviceDao';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -53,6 +53,57 @@ const normalizePayload = payload => {
     altitude: payload.altitude !== undefined ? payload.altitude : null,
     source: payload.source ? String(payload.source).trim() : null
   };
+};
+
+export const getAllDeviceLocationList = async payload => {
+  let { page, limit, sortByRecordedAt, search } = payload;
+  page = +page || OFFSET;
+  limit = +limit || PAGE_LIMIT;
+
+  let filter = {};
+  if (payload.user_id) {
+    filter.user_id = Number(payload.user_id);
+  }
+  if (payload.device_id) {
+    filter.device_id = String(payload.device_id).trim();
+  }
+  if (payload.device_type) {
+    filter.device_type = String(payload.device_type).trim();
+  }
+  if (payload.source) {
+    filter.source = String(payload.source).trim();
+  }
+  if (search) {
+    const searchText = { [Sequelize.Op.iLike]: `%${search}%` };
+    filter = {
+      ...filter,
+      [Sequelize.Op.or]: [
+        { device_id: searchText },
+        { device_type: searchText },
+        { source: searchText }
+      ]
+    };
+  }
+
+  let order = ['recorded_at', 'desc'];
+  if (sortByRecordedAt) {
+    order = ['recorded_at', sortByRecordedAt];
+  }
+
+  try {
+    const list = await getDeviceLocationList(filter, page, limit, order);
+    return {
+      message: MESSAGE_CONSTANTS.SUCCESS,
+      data: {
+        list: list.rows,
+        totalPages: Math.ceil(list.count / limit),
+        currentPage: page,
+        totalCount: list.count
+      }
+    };
+  } catch (err) {
+    throw new CustomError(SERVER_ERROR, err.message);
+  }
 };
 
 export const getDeviceLocationDetail = async id => {
@@ -112,46 +163,4 @@ export const deleteDeviceLocations = async id => {
   return {
     message: MESSAGE_CONSTANTS.SUCCESS
   };
-};
-
-export const persistGpsLbsLocation = async ({ deviceId, parsed, transport }) => {
-  if (!parsed || parsed.protocol !== 'gps_lbs') {
-    return null;  
-  }
-  if (!Number.isFinite(parsed.latitude) || !Number.isFinite(parsed.longitude)) {
-    return null;
-  }
-
-  const device = await getHardwareDevice({ device_id: deviceId, is_active: true });
-  if (!device?.user_id) {
-    logger.info(`Skipping gps_lbs persist, hardware device not mapped for ${deviceId}`);
-    return null;
-  }
-
-  const payload = {
-    user_id: device.user_id,
-    device_id: deviceId,
-    device_type: device.device_type || transport || 'tcp',
-    latitude: parsed.latitude,
-    longitude: parsed.longitude,
-    recorded_at: parseDateOrFallback(parsed.timestamp, new Date()),
-    speed: parsed.speed !== undefined ? parsed.speed : null,
-    heading: parsed.heading !== undefined ? parsed.heading : null,
-    source: 'gps_lbs',
-  };
-
-  try {
-    const location = await createDeviceLocation(payload);
-    await updateHardwareDevice(device, {
-      latitude: Number(parsed.latitude.toFixed(6)),
-      longitude: Number(parsed.longitude.toFixed(6)),
-      last_recorded_at: payload.recorded_at,
-      updated_at: new Date(),
-      metadata: parsed,
-    });
-    return location;
-  } catch (error) {
-    logger.error(`Failed to persist gps_lbs location for ${deviceId}: ${error.message}`);
-    return null;
-  }
 };

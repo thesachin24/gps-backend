@@ -60,10 +60,9 @@ const _getLawyerProfileData = data => {
 
 export const getDashboardData = async user_id => {
 
-  const { ads, banners } = await getListData(user_id);
+  const { deviceLocations } = await getListData(user_id);
     const data = {
-      ads,
-      banners
+      deviceLocations
     }
 
   return {

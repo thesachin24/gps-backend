@@ -1,11 +1,23 @@
 import logger from '../config/logger';
 import { OK, CREATED, SERVER_ERROR } from '../constants';
 import {
+  getAllDeviceLocationList as getAllDeviceLocationListService,
   createDeviceLocations,
   deleteDeviceLocations,
   getDeviceLocationDetail,
   updateDeviceLocationDetail
 } from '../service/deviceLocationService';
+
+export const getAllDeviceLocationList = async (req, res) => {
+  const { query } = req;
+  try {
+    const response = await getAllDeviceLocationListService(query);
+    return res.status(OK).json(response);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
 
 export const createDeviceLocation = async (req, res) => {
   const { body } = req;

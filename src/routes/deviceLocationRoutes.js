@@ -2,6 +2,7 @@ import express from 'express';
 import validate from 'express-joi-validator';
 import { catchValidationErrors, authenticate } from '../middleware/index';
 import {
+  getAllDeviceLocationList,
   createDeviceLocation,
   deleteDeviceLocation,
   getDeviceLocationDetails,
@@ -10,6 +11,14 @@ import {
 import { deviceLocation } from '../validations';
 
 const deviceLocationRoutes = express.Router({ mergeParams: true });
+
+deviceLocationRoutes.get(
+  '/',
+  authenticate,
+  validate(deviceLocation.getDeviceLocationList),
+  catchValidationErrors,
+  getAllDeviceLocationList
+);
 
 deviceLocationRoutes.post(
   '/',

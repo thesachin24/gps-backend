@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { persistGpsLbsLocation } from '../service'
+// import { saveGpsLocation } from '../gps/gpsIngestionService'
 
 // cron.schedule('*/10 * 0-1 * * 2-5', async () => {
 // },{
@@ -22,10 +22,12 @@ import { persistGpsLbsLocation } from '../service'
 //   timezone: "Asia/Kolkata"
 // })
 
-// persistGpsLbsLocation({
-//   deviceId: '1234567890',
+// Example:
+// saveGpsLocation({
+//   deviceId: '357803371678505',
 //   parsed: {
 //     device_type: 'GPS_TRACKER',
+//     type: 'gps_fix',
 //     protocol: 'gps_lbs',
 //     latitude: 12.9716,
 //     longitude: 77.5946,
@@ -33,7 +35,8 @@ import { persistGpsLbsLocation } from '../service'
 //     heading: 10,
 //     timestamp: new Date().toISOString()
 //   },
-//   transport: 'tcp'
+//   transport: 'tcp',
+//   source: 'gps_lbs'
 // })
 
 module.exports = cron

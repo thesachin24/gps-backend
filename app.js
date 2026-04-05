@@ -12,7 +12,7 @@ require('pg').defaults.parseInt8 = true
 import i18n from 'i18n';
 // import './src/utils/cron';
 import cors from 'cors';
-import { startGpsMqttListener, stopGpsMqttListener } from './src/gps/mqttGpsListener';
+import { startGpsMqttPublisher, stopGpsMqttPublisher } from './src/gps/mqttGpsPublisher';
 import { startGpsTcpListener, stopGpsTcpListener } from './src/gps/tcpGpsListener';
 const app = express();
 
@@ -48,7 +48,7 @@ sequelize
   .authenticate()
   .then(() => {
     logger.info('Database connection has been established successfully.');
-    startGpsMqttListener();
+    startGpsMqttPublisher();
     startGpsTcpListener();
     app.listen(process.env.PORT, () => {
       logger.info(`Example app listening on port ${process.env.PORT}!`);
@@ -68,13 +68,13 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 process.on('SIGINT', () => {
-  stopGpsMqttListener();
+  stopGpsMqttPublisher();
   stopGpsTcpListener();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  stopGpsMqttListener();
+  stopGpsMqttPublisher();
   stopGpsTcpListener();
   process.exit(0);
 });

@@ -1,8 +1,8 @@
 import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
-import { publishGpsToMqtt } from './mqttGpsListener';
-import { persistGpsLbsLocation } from '../service/deviceLocationService';
+import { publishGpsToMqtt } from './mqttGpsPublisher';
+import { saveGpsLocation } from './gpsIngestionService';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -102,6 +102,43 @@ class GpsTcpListener {
     this.started = false;
   }
 
+  handleParsedMessage(socket, remote, rawMessage) {
+    const parsed = parseGpsPayload(rawMessage);
+    if (parsed?.imei) {
+      socket._gpsDeviceId = String(parsed.imei);
+    }
+
+    const deviceId = inferDeviceId(parsed, rawMessage, socket);
+    const rawPayload = Buffer.isBuffer(rawMessage) ? rawMessage.toString('hex') : String(rawMessage);
+    const event = {
+      transport: 'tcp',
+      deviceId,
+      remoteAddress: socket.remoteAddress || null,
+      remotePort: socket.remotePort || null,
+      receivedAt: new Date().toISOString(),
+      raw: rawPayload,
+      rawEncoding: Buffer.isBuffer(rawMessage) ? 'hex' : 'utf8',
+      parsed
+    };
+
+    logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event)}`);
+    publishGpsToMqtt(getBridgeTopic(deviceId), event);
+
+    if (parsed?.protocol === 'gps_lbs') {
+      void saveGpsLocation({
+        deviceId,
+        parsed,
+        transport: 'tcp',
+        source: 'gps_lbs'
+      });
+    }
+
+    if (parsed?.ackHex) {
+      socket.write(Buffer.from(parsed.ackHex, 'hex'));
+      logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
+    }
+  }
+
   start() {
     if (this.started) {
       return;
@@ -134,46 +171,7 @@ class GpsTcpListener {
           socket._gpsBuffer = rest;
 
           messages.forEach(rawMessage => {
-            console.log('rawMessage Start--->', rawMessage);
-            console.log('rawMessage End--->');
-            const parsed = parseGpsPayload(rawMessage);
-            if (parsed?.imei) {
-              socket._gpsDeviceId = String(parsed.imei);
-            }
-            const deviceId = inferDeviceId(parsed, rawMessage, socket);
-            const rawPayload = Buffer.isBuffer(rawMessage)
-              ? rawMessage.toString('hex')
-              : String(rawMessage);
-            const event = {
-              transport: 'tcp',
-              deviceId,
-              remoteAddress: socket.remoteAddress || null,
-              remotePort: socket.remotePort || null,
-              receivedAt: new Date().toISOString(),
-              raw: rawPayload,
-              rawEncoding: Buffer.isBuffer(rawMessage) ? 'hex' : 'utf8',
-              parsed
-            };
-
-            if (parsed.type === 'gps_fix') {
-              logger.info(`GPS TCP FIX ${JSON.stringify(event)}`);
-            } else {
-              logger.info(`GPS TCP MSG ${JSON.stringify(event)}`);
-            }
-
-            const bridgeTopic = getBridgeTopic(deviceId);
-            publishGpsToMqtt(bridgeTopic, event);
-
-            persistGpsLbsLocation({
-              deviceId,
-              parsed,
-              transport: 'tcp'
-            });
-
-            if (parsed?.ackHex) {
-              socket.write(Buffer.from(parsed.ackHex, 'hex'));
-              logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
-            }
+            this.handleParsedMessage(socket, remote, rawMessage);
           });
         } catch (err) {
           logger.error(`GPS TCP parse error: ${err.message}`);
