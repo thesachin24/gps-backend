@@ -47,10 +47,10 @@ import {
   createFundAccountRazorpay,
   deactivateFundAccountRazorpay,
 } from "../utils/razorPay";
-import { createBank, deleteBank, getBank } from "../dao/bankDao";
+// import { createBank, deleteBank, getBank } from "../dao/bankDao";
 import { Sequelize } from "sequelize";
-import { deleteBusinesses } from "./businessService";
-import { deleteMatrimonials } from "./matrimonialService";
+// import { deleteBusinesses } from "./businessService";
+// import { deleteMatrimonials } from "./matrimonialService";
 // import { consultationPayout } from '../cron/payout';
 
 export const getAllUsers = async (query) => {
@@ -425,105 +425,13 @@ export const _activeInactiveRazorpayBankAccount = async (
   return response.data;
 };
 
-/**
- * This function will return the updated user object with address
- * @property {int} userId - the userId of the user.
- * @property {boolean} isAdmin - admin role of the user.
- * @property {object} req.body - user fields to be updated.
- * @returns {object}
- */
-export const updateBankDetails = async (registration_id, payload) => {
-  try {
-    const bank = await getBank({ user_id: registration_id });
-    if (bank) {
-      throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.BANK_ALREADY_ADDED);
-    }
-
-    const { name, bank_name, ifsc, account_number, upi } = payload;
-
-    //Create Bank
-    const bankPayload = {
-      user_id: registration_id,
-      name,
-      bank_name,
-      ifsc,
-      account_number,
-      upi,
-      status: 1,
-    };
-    const data = await createBank(bankPayload);
-
-    return {
-      message: MESSAGE_CONSTANTS.SUCCESS,
-      data,
-    };
-  } catch (err) {
-    logger.error(err);
-    throw new CustomError(SERVER_ERROR, err.message);
-  }
-};
-
-export const deleteBankDetails = async (user_id) => {
-  const bankInfo = await getBank({ user_id });
-  if (!bankInfo) {
-    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
-  }
-  try {
-    await deleteBank({ user_id });
-    return {
-      message: MESSAGE_CONSTANTS.SUCCESS,
-    };
-  } catch (err) {
-    throw new CustomError(
-      SERVER_ERROR,
-      MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND,
-      err.message
-    );
-  }
-};
-
-
-
 export const deleteUsers = async (id) => {
   const userInfo = await getUser({ id });
   if (!userInfo) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
   try {
-    const businessIds = await getAllBusinessIds({ user_id: id });
-    for (const business of businessIds) {
-      await deleteBusinesses(business.id, id);
-    }
-
-    
-    const matrimonial = await getMatrimonial({ added_by_id: id });
-    if (matrimonial) {
-      // const matrimonialPhotos = await getMatrimonialPhotoList({ user_matrimonial_id: matrimonial.id });
-      // for (const photo of matrimonialPhotos.rows) {
-      //   await handleDeleteMedia(photo.path);
-      //   await deleteMatrimonialPhoto({ id: photo.id });
-      // }
-      // await deleteMatrimonialRequest({ matrimonial_profile_id: matrimonial.id });
-      // await deleteMatrimonial({ added_by_id: id });
-      await deleteMatrimonials(matrimonial.id, id);
-    }
-
-    //Business Related
-    await deleteRecentView({ user_id: id });
-    await deleteAvail({ user_id: id });
-    await deleteReview({ user_id: id });
-    await deleteFavorite({ user_id: id });
-    await deleteOrder({ user_id: id });
-
-    //Delete Images User Related
-    await handleDeleteMedia(userInfo.profile_image);
-    await handleDeleteMedia(userInfo.kyc_doc_front);
-    await handleDeleteMedia(userInfo.kyc_doc_back);
-
-    await deleteUserDevice({ user_id: id });
-    await deleteAuthToken({ user_id: id });
     await deleteUser({ id });
-
     
     return {
       message: MESSAGE_CONSTANTS.SUCCESS
