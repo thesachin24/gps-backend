@@ -21,35 +21,49 @@ const transport = new transports.DailyRotateFile({
   datePattern: 'DD-MM-YYYY',
   maxFiles: '30d'
 });
-const transporter = [transport];
-if (process.env.ENV === 'development') {
-  // transporter.push(new transports.Console());
+
+const fileFormat = format.combine(
+  format.uncolorize(),
+  format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss'
+  }),
+  format.printf(
+    info => {
+      if (info.level == "error") {
+        // sendTelegram({
+        //   template: "ERROR_APP",
+        //   data : {
+        //     message :  `\n\nTime: ${info.timestamp} \n\n${info.stack || info.message}`
+        //   }
+        // })
+      }
+      return `${info.level} : ${info.timestamp} : ${info.stack || info.message}`
+    }
+  )
+);
+
+const consoleFormat = format.combine(
+  format.colorize({ all: true }),
+  format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss'
+  }),
+  format.printf(info => `${info.level} : ${info.timestamp} : ${info.stack || info.message}`)
+);
+
+const loggerTransports = [transport];
+if (process.env.ENV === 'development' || process.env.LOG_CONSOLE === 'true') {
+  loggerTransports.push(
+    new transports.Console({
+      level: process.env.LOG_LEVEL || 'info',
+      format: consoleFormat
+    })
+  );
 }
+
 const logger = new winston.createLogger({
   levels: config.npm.levels,
-  format: format.combine(
-    format.uncolorize(),
-    // format.message,
-    format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss'
-    }),
-    format.printf(
-      info => {
-        //Send Error to Telegram
-            if(info.level == "error"){
-            //   sendTelegram({
-            //     template: "ERROR_APP",
-            //     data : {
-            //       message :  `\n\nTime: ${info.timestamp} \n\n${info.stack || info.message}`
-            //     }
-            // })
-          }
-          //Send Error to Telegram
-        return `${info.level} : ${info.timestamp} : ${info.stack || info.message}`
-      }
-    )
-  ),
-  transports: transporter,
+  format: fileFormat,
+  transports: loggerTransports,
   exitOnError: false
 });
 

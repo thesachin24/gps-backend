@@ -25,6 +25,7 @@ export const saveGpsLocation = async ({
   metadata
 }) => {
   if (!deviceId || !isValidFix(parsed)) {
+    logger.info(`GPS persist skipped: invalid fix payload deviceId=${deviceId || 'unknown'} parsed=${JSON.stringify(parsed || {})}`);
     return null;
   }
 
@@ -48,6 +49,16 @@ export const saveGpsLocation = async ({
   };
 
   try {
+    logger.info(`GPS persist start: ${JSON.stringify({
+      deviceId,
+      user_id: locationPayload.user_id,
+      transport: transport || null,
+      source: locationPayload.source,
+      latitude: locationPayload.latitude,
+      longitude: locationPayload.longitude,
+      recorded_at: locationPayload.recorded_at
+    })}`);
+
     // Create device locations
     const location = await createDeviceLocation(locationPayload);
 
@@ -62,9 +73,10 @@ export const saveGpsLocation = async ({
         parsed
       }
     });
+    logger.info(`GPS persist success: deviceId=${deviceId} locationId=${location?.id || 'na'}`);
     return location;
   } catch (error) {
-    logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message}`);
+    logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(locationPayload)}`);
     return null;
   }
 };
