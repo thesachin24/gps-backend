@@ -340,7 +340,7 @@ const decodeGt06GpsLbs = infoBuffer => {
   const speed = infoBuffer[15];
   const courseStatus = infoBuffer.readUInt16BE(16);
   const heading = courseStatus & 0x03ff;
-  const flags = decodeCourseStatusFlags(courseStatus);
+  // const flags = decodeCourseStatusFlags(courseStatus);
 
   let latitude = rawLatitude / 1800000;
   let longitude = rawLongitude / 1800000;
@@ -520,10 +520,10 @@ const parseGt06Payload = rawBuffer => {
     }
   } else if (protocolNo === 0x94) {
     const information = decodeGt06InfoTransmission(infoBuffer);
-    parsed.information = {
-      messageKind: 'device_information_report',
-      ...(information || {})
-    };
+    // parsed.information = {
+    //   messageKind: 'device_information_report',
+    //   ...(information || {})
+    // };
   }
 
   return parsed;
