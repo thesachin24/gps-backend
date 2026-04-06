@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.hardware_devices (
     device_type VARCHAR(255) NOT NULL DEFAULT 'gps_tracker',
     name VARCHAR(255),
     metadata JSONB,
+    heartbeat JSONB,
     latitude DECIMAL(9, 6),
     longitude DECIMAL(9, 6),
     last_recorded_at TIMESTAMPTZ,

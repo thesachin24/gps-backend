@@ -32,6 +32,10 @@ const HardwareDevice = sequelize.define(
       allowNull: true,
       type: Sequelize.JSONB
     },
+    heartbeat: {
+      allowNull: true,
+      type: Sequelize.JSONB
+    },
     latitude: {
       allowNull: true,
       type: Sequelize.DECIMAL(9, 6)

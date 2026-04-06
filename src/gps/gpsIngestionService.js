@@ -17,6 +17,35 @@ const isValidFix = parsed =>
 
 const toFixedCoordinate = value => Number(Number(value).toFixed(6));
 
+export const saveHeartbeat = async ({ deviceId, parsed }) => {
+  if (!deviceId || parsed?.protocol !== 'heartbeat' || !parsed?.heartbeat) {
+    logger.info(`Heartbeat persist skipped: missing data deviceId=${deviceId || 'unknown'}`);
+    return null;
+  }
+
+  const hardwareDevice = await getHardwareDevice({ device_id: deviceId, is_active: true });
+  if (!hardwareDevice?.user_id) {
+    logger.info(`Skipping heartbeat persist, hardware device not mapped for ${deviceId}`);
+    return null;
+  }
+
+  try {
+    const heartbeatData = {
+      ...parsed.heartbeat,
+      received_at: new Date().toISOString()
+    };
+    await updateHardwareDevice(hardwareDevice, {
+      heartbeat: heartbeatData,
+      updated_at: new Date()
+    });
+    logger.info(`Heartbeat persist success: deviceId=${deviceId}`);
+    return heartbeatData;
+  } catch (error) {
+    logger.error(`Failed to persist heartbeat for ${deviceId}: ${error.message}`);
+    return null;
+  }
+};
+
 export const saveGpsLocation = async ({
   deviceId,
   parsed,

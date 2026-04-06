@@ -2,7 +2,7 @@ import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
-import { saveGpsLocation } from './gpsIngestionService';
+import { saveGpsLocation, saveHeartbeat } from './gpsIngestionService';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -150,6 +150,10 @@ class GpsTcpListener {
         source: 'gps_lbs',
         metadata: parsed
       });
+    }
+
+    if (parsed?.protocol === 'heartbeat') {
+      void saveHeartbeat({ deviceId, parsed });
     }
 
     if (parsed?.ackHex) {
