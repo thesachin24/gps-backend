@@ -190,7 +190,7 @@ const decodeGt06GpsLbs = infoBuffer => {
   if (!infoBuffer || infoBuffer.length < 12) {
     return null;
   }
-
+console.log('infoBuffer------->', infoBuffer.toString('hex'));
   const timestamp = decodeGt06DateTime(infoBuffer.subarray(0, 6));
   const gpsInfoSat = infoBuffer[6];
   const gpsInfoLength = (gpsInfoSat & 0xf0) >> 4;
@@ -300,9 +300,9 @@ const parseGt06Payload = rawBuffer => {
     protocolNo,
     protocol,
     packetLength,
-    infoLength,
-    infoHex: infoBuffer.toString('hex'),
-    infoBytes: toByteArray(infoBuffer),
+    // infoLength,
+    // infoHex: infoBuffer.toString('hex'),
+    // infoBytes: toByteArray(infoBuffer),
     serialNo,
     crc: {
       packet: packetCrc,
