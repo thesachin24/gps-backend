@@ -340,7 +340,7 @@ const decodeGt06GpsLbs = infoBuffer => {
   const speed = infoBuffer[15];
   const courseStatus = infoBuffer.readUInt16BE(16);
   const heading = courseStatus & 0x03ff;
-  // const flags = decodeCourseStatusFlags(courseStatus);
+  const flags = decodeCourseStatusFlags(courseStatus);
 
   let latitude = rawLatitude / 1800000;
   let longitude = rawLongitude / 1800000;
