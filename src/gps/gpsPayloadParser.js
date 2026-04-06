@@ -294,6 +294,11 @@ const parseGt06Payload = rawBuffer => {
   const packetCrc = rawBuffer.readUInt16BE(crcStart);
   const crcBody = rawBuffer.subarray(is7979 ? 4 : 2, crcStart);
   const calculatedCrc = crc16Itu(crcBody);
+  const lengthField = is7979 ? rawBuffer.subarray(2, 4) : rawBuffer.subarray(2, 3);
+  const protocolField = rawBuffer.subarray(protocolIndex, protocolIndex + 1);
+  const serialField = rawBuffer.subarray(infoEnd, infoEnd + 2);
+  const crcField = rawBuffer.subarray(crcStart, crcStart + 2);
+  const stopField = rawBuffer.subarray(rawBuffer.length - 2);
   const parsed = {
     type: 'gt06_packet',
     header: is7979 ? '7979' : '7878',
@@ -309,7 +314,17 @@ const parseGt06Payload = rawBuffer => {
       calculated: calculatedCrc,
       valid: packetCrc === calculatedCrc
     },
-    rawHex: rawBuffer.toString('hex')
+    rawHex: rawBuffer.toString('hex'),
+    rawBytes: toByteArray(rawBuffer),
+    packet: {
+      startHex: rawBuffer.subarray(0, is7979 ? 2 : 2).toString('hex'),
+      lengthHex: lengthField.toString('hex'),
+      protocolHex: protocolField.toString('hex'),
+      infoHex: infoBuffer.toString('hex'),
+      serialHex: serialField.toString('hex'),
+      crcHex: crcField.toString('hex'),
+      stopHex: stopField.toString('hex')
+    }
   };
 
   if (protocolNo === 0x01 && infoBuffer.length >= 8) {
