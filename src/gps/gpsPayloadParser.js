@@ -440,13 +440,16 @@ const parseGt06Payload = rawBuffer => {
     if (gps) {
       parsed.latitude = gps.latitude;
       parsed.longitude = gps.longitude;
+      parsed.speedKph = gps.speedKph;
       parsed.speed = gps.speed;
       parsed.heading = gps.heading;
       parsed.timestamp = gps.timestamp;
       parsed.satellites = gps.satellites;
+      parsed.gpsInfoLength = gps.gpsInfoLength;
       parsed.rawLatitude = gps.rawLatitude;
       parsed.rawLongitude = gps.rawLongitude;
       parsed.courseStatus = gps.courseStatus;
+      parsed.courseStatusFlags = gps.courseStatusFlags;
       parsed.hemisphere = gps.hemisphere;
       parsed.lbs = gps.lbs;
       parsed.type = 'gps_fix';
