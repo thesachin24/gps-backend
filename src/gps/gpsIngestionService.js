@@ -19,10 +19,12 @@ const toFixedCoordinate = value => Number(Number(value).toFixed(6));
 
 export const saveGpsLocation = async ({
   deviceId,
-  payload,
+  parsed,
+  transport,
+  source,
   metadata
 }) => {
-  if (!deviceId || !isValidFix(payload)) {
+  if (!deviceId || !isValidFix(parsed)) {
     return null;
   }
 
@@ -32,17 +34,17 @@ export const saveGpsLocation = async ({
     return null;
   }
 
-  const recordedAt = parseDateOrFallback(payload.timestamp, new Date());
+  const recordedAt = parseDateOrFallback(parsed.timestamp, new Date());
   const locationPayload = {
     user_id: hardwareDevice.user_id,
     device_id: deviceId,
-    device_type: hardwareDevice.device_type || payload.device_type || 'gps_tracker',
-    latitude: payload.latitude,
-    longitude: payload.longitude,
+    device_type: hardwareDevice.device_type || transport || 'gps_tracker',
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
     recorded_at: recordedAt,
-    speed: payload.speed !== undefined ? payload.speed : null,
-    heading: payload.heading !== undefined ? payload.heading : null,
-    source: payload.source || 'gps'
+    speed: parsed.speed !== undefined ? parsed.speed : null,
+    heading: parsed.heading !== undefined ? parsed.heading : null,
+    source: source || parsed.source || parsed.protocol || 'gps'
   };
 
   try {
@@ -51,8 +53,8 @@ export const saveGpsLocation = async ({
 
     // Update hardware device
     await updateHardwareDevice(hardwareDevice, {
-      latitude: toFixedCoordinate(payload.latitude),
-      longitude: toFixedCoordinate(payload.longitude),
+      latitude: toFixedCoordinate(parsed.latitude),
+      longitude: toFixedCoordinate(parsed.longitude),
       last_recorded_at: recordedAt,
       updated_at: new Date(),
       metadata: metadata || {
