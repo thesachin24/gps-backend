@@ -142,7 +142,13 @@ class GpsTcpListener {
       publishGpsToMqtt(getBridgeTopic(deviceId), payload);
       
       // Save GPS location to database
-      void saveGpsLocation({ deviceId, payload, metadata: parsed });
+      void saveGpsLocation({
+        deviceId,
+        parsed,
+        transport: 'tcp',
+        source: 'gps_lbs',
+        metadata: parsed
+      });
     }
 
     if (parsed?.ackHex) {
