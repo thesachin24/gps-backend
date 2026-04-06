@@ -133,7 +133,8 @@ class GpsTcpListener {
       parsed
     };
 
-    logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event)}`);
+    //Format JSON
+    logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event, null, 2)}`);
     // publishGpsToMqtt(getBridgeTopic(deviceId), buildBridgePayload(deviceId, parsed));
 
     if (parsed?.protocol === 'gps_lbs') {
