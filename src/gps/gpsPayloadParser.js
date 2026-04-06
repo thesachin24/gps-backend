@@ -192,6 +192,65 @@ const decodeHeartbeatAlarm = code => {
   return map[code] || 'unknown';
 };
 
+const toHexByte = value => value.toString(16).padStart(2, '0');
+
+const decodeInformationTypeName = infoType => {
+  const map = {
+    0x01: 'terminal_to_server_short_message',
+    0x02: 'server_to_terminal_short_message_ack',
+    0x03: 'obd_data',
+    0x04: 'reserved',
+    0x05: 'reserved',
+    0x06: 'time_sync_or_status',
+    0x07: 'reserved',
+    0x08: 'network_assist_data',
+    0x09: 'reserved',
+    0x0a: 'lbs_or_network_report'
+  };
+  return map[infoType] || 'unknown_information_type';
+};
+
+const decodeInfoTransmissionPayload = (infoType, payloadBuffer) => {
+  if (!payloadBuffer || !payloadBuffer.length) {
+    return {
+      payloadLength: 0
+    };
+  }
+
+  const payloadHex = payloadBuffer.toString('hex');
+  const payload = {
+    payloadLength: payloadBuffer.length,
+    payloadHex,
+    payloadBytes: Array.from(payloadBuffer).map(toHexByte)
+  };
+
+  // Type 0x0A is commonly used by GT06 variants for network/LBS assist reports.
+  // Many vendors encode repeated cell tower blocks in 9-byte groups.
+  if (infoType === 0x0a && payloadBuffer.length % 9 === 0) {
+    const records = [];
+    for (let offset = 0; offset < payloadBuffer.length; offset += 9) {
+      const mcc = payloadBuffer.readUInt16BE(offset);
+      const mnc = payloadBuffer[offset + 2];
+      const lac = payloadBuffer.readUInt16BE(offset + 3);
+      const cellId = readUInt24BE(payloadBuffer, offset + 5);
+      const rssi = payloadBuffer[offset + 8];
+      records.push({
+        index: records.length + 1,
+        mcc,
+        mnc,
+        lac,
+        cellId,
+        cellIdHex: cellId !== null ? cellId.toString(16).padStart(6, '0') : null,
+        signalStrength: rssi
+      });
+    }
+    payload.decodedAs = 'cell_tower_records_9_bytes';
+    payload.cellTowers = records;
+  }
+
+  return payload;
+};
+
 const decodeHeartbeatTerminalInfo = terminalInfo => {
   const alarmCode = (terminalInfo >> 3) & 0x07;
   return {
@@ -212,12 +271,16 @@ const decodeGt06InfoTransmission = infoBuffer => {
   const infoType = infoBuffer[0];
   const terminalIdHex = infoBuffer.length >= 9 ? infoBuffer.subarray(1, 9).toString('hex') : null;
   const terminalId = terminalIdHex ? terminalIdHex.replace(/^0/, '') : null;
-  const payloadHex = infoBuffer.length > 9 ? infoBuffer.subarray(9).toString('hex') : null;
+  const payloadBuffer = infoBuffer.length > 9 ? infoBuffer.subarray(9) : Buffer.alloc(0);
+  const payloadHex = payloadBuffer.length ? payloadBuffer.toString('hex') : null;
 
   return {
     informationType: infoType,
+    informationTypeHex: toHexByte(infoType),
+    informationTypeName: decodeInformationTypeName(infoType),
     terminalId,
-    payloadHex
+    payloadHex,
+    payload: decodeInfoTransmissionPayload(infoType, payloadBuffer)
   };
 };
 
@@ -370,7 +433,8 @@ const parseGt06Payload = rawBuffer => {
   const serialNo = rawBuffer.readUInt16BE(infoEnd);
   const crcStart = infoEnd + 2;
   const packetCrc = rawBuffer.readUInt16BE(crcStart);
-  const crcBody = rawBuffer.subarray(is7979 ? 4 : 2, crcStart);
+  // CRC is calculated from length field through serial number for both 7878 and 7979 frames.
+  const crcBody = rawBuffer.subarray(2, crcStart);
   const calculatedCrc = crc16Itu(crcBody);
   const lengthField = is7979 ? rawBuffer.subarray(2, 4) : rawBuffer.subarray(2, 3);
   const protocolField = rawBuffer.subarray(protocolIndex, protocolIndex + 1);
