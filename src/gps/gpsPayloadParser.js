@@ -155,11 +155,22 @@ const crc16Itu = bytes => {
 };
 
 const toByteArray = buffer => Array.from(buffer || []);
-const toParamMap = (buffer, formatter = value => value) =>
-  toByteArray(buffer).reduce((acc, value, index) => {
-    acc[`param${String(index).padStart(2, '0')}`] = formatter(value);
-    return acc;
-  }, {});
+const decodeGt06InfoTransmission = infoBuffer => {
+  if (!infoBuffer || !infoBuffer.length) {
+    return null;
+  }
+
+  const infoType = infoBuffer[0];
+  const terminalIdHex = infoBuffer.length >= 9 ? infoBuffer.subarray(1, 9).toString('hex') : null;
+  const terminalId = terminalIdHex ? terminalIdHex.replace(/^0/, '') : null;
+  const payloadHex = infoBuffer.length > 9 ? infoBuffer.subarray(9).toString('hex') : null;
+
+  return {
+    informationType: infoType,
+    terminalId,
+    payloadHex
+  };
+};
 
 const toProtocolName = protocolNo => {
   const names = {
@@ -312,9 +323,6 @@ const parseGt06Payload = rawBuffer => {
     packetLength,
     infoLength,
     infoHex: infoBuffer.toString('hex'),
-    infoBytes: toByteArray(infoBuffer),
-    infoParams: toParamMap(infoBuffer),
-    infoParamsHex: toParamMap(infoBuffer, value => value.toString(16).padStart(2, '0')),
     serialNo,
     crc: {
       packet: packetCrc,
@@ -322,7 +330,6 @@ const parseGt06Payload = rawBuffer => {
       valid: packetCrc === calculatedCrc
     },
     rawHex: rawBuffer.toString('hex'),
-    rawBytes: toByteArray(rawBuffer),
     packet: {
       startHex: rawBuffer.subarray(0, is7979 ? 2 : 2).toString('hex'),
       lengthHex: lengthField.toString('hex'),
@@ -372,9 +379,7 @@ const parseGt06Payload = rawBuffer => {
       parsed.type = 'gps_fix';
     }
   } else if (protocolNo === 0x94) {
-    // Information transmission: preserve decoded envelope and full info block.
-    parsed.informationType = infoBuffer.length ? infoBuffer[0] : null;
-    parsed.informationHex = infoBuffer.toString('hex');
+    parsed.information = decodeGt06InfoTransmission(infoBuffer);
   }
 
   return parsed;
