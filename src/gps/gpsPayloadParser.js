@@ -154,7 +154,56 @@ const crc16Itu = bytes => {
   return crc;
 };
 
-const toByteArray = buffer => Array.from(buffer || []);
+const decodeBatteryLevel = level => {
+  const map = {
+    0: 'unknown',
+    1: 'very_low',
+    2: 'low',
+    3: 'medium',
+    4: 'high',
+    5: 'very_high',
+    6: 'full'
+  };
+  return map[level] || 'unknown';
+};
+
+const decodeGsmSignal = level => {
+  const map = {
+    0: 'none',
+    1: 'very_weak',
+    2: 'weak',
+    3: 'good',
+    4: 'strong'
+  };
+  return map[level] || 'unknown';
+};
+
+const decodeHeartbeatAlarm = code => {
+  const map = {
+    0: 'normal',
+    1: 'shock',
+    2: 'power_cut',
+    3: 'low_battery',
+    4: 'sos',
+    5: 'reserved',
+    6: 'geofence',
+    7: 'removal_or_overspeed'
+  };
+  return map[code] || 'unknown';
+};
+
+const decodeHeartbeatTerminalInfo = terminalInfo => {
+  const alarmCode = (terminalInfo >> 3) & 0x07;
+  return {
+    raw: terminalInfo,
+    bits: terminalInfo.toString(2).padStart(8, '0'),
+    armed: (terminalInfo & 0x01) !== 0,
+    ignitionOn: (terminalInfo & 0x02) !== 0,
+    charging: (terminalInfo & 0x04) !== 0,
+    alarmCode,
+    alarmType: decodeHeartbeatAlarm(alarmCode)
+  };
+};
 const decodeGt06InfoTransmission = infoBuffer => {
   if (!infoBuffer || !infoBuffer.length) {
     return null;
@@ -171,6 +220,18 @@ const decodeGt06InfoTransmission = infoBuffer => {
     payloadHex
   };
 };
+
+const decodeCourseStatusFlags = courseStatus => ({
+  raw: courseStatus,
+  bits: courseStatus.toString(2).padStart(16, '0'),
+  realTimeGps: (courseStatus & 0x2000) !== 0,
+  gpsFixed: (courseStatus & 0x1000) !== 0,
+  valid: (courseStatus & 0x1000) !== 0,
+  hasIgnition: (courseStatus & 0x4000) !== 0,
+  ignitionOn: (courseStatus & 0x8000) !== 0,
+  isWest: (courseStatus & 0x0400) === 0,
+  isSouth: (courseStatus & 0x0800) !== 0
+});
 
 const toProtocolName = protocolNo => {
   const names = {
@@ -206,7 +267,7 @@ const decodeGt06GpsLbs = infoBuffer => {
   if (!infoBuffer || infoBuffer.length < 12) {
     return null;
   }
-console.log('infoBuffer------->', infoBuffer.toString('hex'));
+
   const timestamp = decodeGt06DateTime(infoBuffer.subarray(0, 6));
   const gpsInfoSat = infoBuffer[6];
   const gpsInfoLength = (gpsInfoSat & 0xf0) >> 4;
@@ -216,14 +277,12 @@ console.log('infoBuffer------->', infoBuffer.toString('hex'));
   const speed = infoBuffer[15];
   const courseStatus = infoBuffer.readUInt16BE(16);
   const heading = courseStatus & 0x03ff;
+  const flags = decodeCourseStatusFlags(courseStatus);
 
   let latitude = rawLatitude / 1800000;
   let longitude = rawLongitude / 1800000;
 
-  // GT06 course/status flags for this tracker variant:
-  // bit10 clear => West, bit11 set => South.
-  const isWest = (courseStatus & 0x0400) === 0;
-  const isSouth = (courseStatus & 0x0800) !== 0;
+  const { isWest, isSouth } = flags;
   if (isSouth) {
     latitude *= -1;
   }
@@ -246,12 +305,14 @@ console.log('infoBuffer------->', infoBuffer.toString('hex'));
     rawLatitude,
     rawLongitude,
     courseStatus,
+    courseStatusFlags: flags,
     hemisphere: {
       isSouth,
       isWest
     },
     latitude: Number(latitude.toFixed(6)),
     longitude: Number(longitude.toFixed(6)),
+    speedKph: speed,
     speed,
     heading,
     lbs: hasLbs
@@ -259,7 +320,8 @@ console.log('infoBuffer------->', infoBuffer.toString('hex'));
           mcc,
           mnc,
           lac,
-          cellId
+          cellId,
+          cellIdHex: cellId !== null ? cellId.toString(16).padStart(6, '0') : null
         }
       : null
   };
@@ -352,11 +414,22 @@ const parseGt06Payload = rawBuffer => {
   } else if (protocolNo === 0x13) {
     // Heartbeat commonly carries terminal status bytes.
     if (infoBuffer.length >= 5) {
+      const terminalInfo = infoBuffer[0];
+      const voltageLevel = infoBuffer[1];
+      const gsmSignalStrength = infoBuffer[2];
+      const alarmByte = infoBuffer[3];
+      const languageByte = infoBuffer[4];
       parsed.heartbeat = {
-        terminalInfo: infoBuffer[0],
-        voltageLevel: infoBuffer[1],
-        gsmSignalStrength: infoBuffer[2],
-        alarmLanguage: infoBuffer.readUInt16BE(3)
+        messageKind: 'status_keepalive',
+        terminalInfo,
+        terminalInfoDecoded: decodeHeartbeatTerminalInfo(terminalInfo),
+        voltageLevel,
+        batteryLevel: decodeBatteryLevel(voltageLevel),
+        gsmSignalStrength,
+        gsmSignal: decodeGsmSignal(gsmSignalStrength),
+        alarmLanguage: infoBuffer.readUInt16BE(3),
+        alarmByte,
+        languageByte
       };
     } else if (infoBuffer.length > 0) {
       parsed.heartbeatHex = infoBuffer.toString('hex');
@@ -379,7 +452,11 @@ const parseGt06Payload = rawBuffer => {
       parsed.type = 'gps_fix';
     }
   } else if (protocolNo === 0x94) {
-    parsed.information = decodeGt06InfoTransmission(infoBuffer);
+    const information = decodeGt06InfoTransmission(infoBuffer);
+    parsed.information = {
+      messageKind: 'device_information_report',
+      ...(information || {})
+    };
   }
 
   return parsed;
