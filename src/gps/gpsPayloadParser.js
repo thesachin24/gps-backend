@@ -9,6 +9,13 @@ const toNumber = value => {
   return Number.isFinite(num) ? num : null;
 };
 
+const readUInt24BE = (buffer, offset) => {
+  if (!buffer || buffer.length < offset + 3) {
+    return null;
+  }
+  return (buffer[offset] << 16) | (buffer[offset + 1] << 8) | buffer[offset + 2];
+};
+
 const toDecimalFromNmea = (value, hemisphere, isLatitude) => {
   if (!value || !hemisphere) {
     return null;
@@ -147,6 +154,8 @@ const crc16Itu = bytes => {
   return crc;
 };
 
+const toByteArray = buffer => Array.from(buffer || []);
+
 const toProtocolName = protocolNo => {
   const names = {
     0x01: 'login',
@@ -206,14 +215,37 @@ const decodeGt06GpsLbs = infoBuffer => {
     longitude *= -1;
   }
 
+  // LBS block (when available) starts after first 18 GPS bytes.
+  const lbsOffset = 18;
+  const hasLbs = infoBuffer.length >= lbsOffset + 8;
+  const mcc = hasLbs ? infoBuffer.readUInt16BE(lbsOffset) : null;
+  const mnc = hasLbs ? infoBuffer[lbsOffset + 2] : null;
+  const lac = hasLbs ? infoBuffer.readUInt16BE(lbsOffset + 3) : null;
+  const cellId = hasLbs ? readUInt24BE(infoBuffer, lbsOffset + 5) : null;
+
   return {
     timestamp,
     satellites,
     gpsInfoLength,
+    rawLatitude,
+    rawLongitude,
+    courseStatus,
+    hemisphere: {
+      isSouth,
+      isWest
+    },
     latitude: Number(latitude.toFixed(6)),
     longitude: Number(longitude.toFixed(6)),
     speed,
-    heading
+    heading,
+    lbs: hasLbs
+      ? {
+          mcc,
+          mnc,
+          lac,
+          cellId
+        }
+      : null
   };
 };
 
@@ -258,20 +290,48 @@ const parseGt06Payload = rawBuffer => {
   const infoEnd = infoStart + infoLength;
   const infoBuffer = rawBuffer.subarray(infoStart, infoEnd);
   const serialNo = rawBuffer.readUInt16BE(infoEnd);
+  const crcStart = infoEnd + 2;
+  const packetCrc = rawBuffer.readUInt16BE(crcStart);
+  const crcBody = rawBuffer.subarray(is7979 ? 4 : 2, crcStart);
+  const calculatedCrc = crc16Itu(crcBody);
   const parsed = {
     type: 'gt06_packet',
     header: is7979 ? '7979' : '7878',
     protocolNo,
     protocol,
+    packetLength,
+    infoLength,
+    infoHex: infoBuffer.toString('hex'),
+    infoBytes: toByteArray(infoBuffer),
     serialNo,
+    crc: {
+      packet: packetCrc,
+      calculated: calculatedCrc,
+      valid: packetCrc === calculatedCrc
+    },
     rawHex: rawBuffer.toString('hex')
   };
 
   if (protocolNo === 0x01 && infoBuffer.length >= 8) {
     const imeiHex = infoBuffer.subarray(0, 8).toString('hex');
     parsed.imei = imeiHex.replace(/^0/, '');
+    // Some devices append terminal metadata in login packet.
+    if (infoBuffer.length > 8) {
+      parsed.loginInfoHex = infoBuffer.subarray(8).toString('hex');
+    }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x13) {
+    // Heartbeat commonly carries terminal status bytes.
+    if (infoBuffer.length >= 5) {
+      parsed.heartbeat = {
+        terminalInfo: infoBuffer[0],
+        voltageLevel: infoBuffer[1],
+        gsmSignalStrength: infoBuffer[2],
+        alarmLanguage: infoBuffer.readUInt16BE(3)
+      };
+    } else if (infoBuffer.length > 0) {
+      parsed.heartbeatHex = infoBuffer.toString('hex');
+    }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x12) {
     const gps = decodeGt06GpsLbs(infoBuffer);
@@ -282,8 +342,17 @@ const parseGt06Payload = rawBuffer => {
       parsed.heading = gps.heading;
       parsed.timestamp = gps.timestamp;
       parsed.satellites = gps.satellites;
+      parsed.rawLatitude = gps.rawLatitude;
+      parsed.rawLongitude = gps.rawLongitude;
+      parsed.courseStatus = gps.courseStatus;
+      parsed.hemisphere = gps.hemisphere;
+      parsed.lbs = gps.lbs;
       parsed.type = 'gps_fix';
     }
+  } else if (protocolNo === 0x94) {
+    // Information transmission: preserve decoded envelope and full info block.
+    parsed.informationType = infoBuffer.length ? infoBuffer[0] : null;
+    parsed.informationHex = infoBuffer.toString('hex');
   }
 
   return parsed;
