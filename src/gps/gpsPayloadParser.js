@@ -155,6 +155,11 @@ const crc16Itu = bytes => {
 };
 
 const toByteArray = buffer => Array.from(buffer || []);
+const toParamMap = (buffer, formatter = value => value) =>
+  toByteArray(buffer).reduce((acc, value, index) => {
+    acc[`param${String(index).padStart(2, '0')}`] = formatter(value);
+    return acc;
+  }, {});
 
 const toProtocolName = protocolNo => {
   const names = {
@@ -305,9 +310,11 @@ const parseGt06Payload = rawBuffer => {
     protocolNo,
     protocol,
     packetLength,
-    // infoLength,
-    // infoHex: infoBuffer.toString('hex'),
-    // infoBytes: toByteArray(infoBuffer),
+    infoLength,
+    infoHex: infoBuffer.toString('hex'),
+    infoBytes: toByteArray(infoBuffer),
+    infoParams: toParamMap(infoBuffer),
+    infoParamsHex: toParamMap(infoBuffer, value => value.toString(16).padStart(2, '0')),
     serialNo,
     crc: {
       packet: packetCrc,
