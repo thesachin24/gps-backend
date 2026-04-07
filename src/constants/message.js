@@ -148,6 +148,10 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     BANNER_VIDEO_UPDATED: 'Banner Video Updated Successfully.',
     BANNER_AD_POSTED: 'Banner cannot be deleted as it is associated with an Ad.',
 
+    /* Hardware device */
+    HARDWARE_DEVICE_CREATE_SUCCESS: 'Hardware device has been successfully registered.',
+    HARDWARE_DEVICE_ALREADY_EXISTS: 'A device with this device_id already exists.',
+
     /* Favorite */
     FAVORITE_CREATE_SUCCESS: 'Favorite has been successfully submitted.',
     FAVORITE_UPDATE_SUCCESS: 'Favorite has been successfully updated.',
