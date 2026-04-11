@@ -273,6 +273,9 @@ export const getDeviceTrips = async payload => {
   const totalDistanceKm = trips.reduce((sum, t) => sum + t.distance_km, 0);
   const totalDurationMs = trips.reduce((sum, t) => sum + t.duration_ms, 0);
 
+  trips.reverse();
+  trips.forEach((t, i) => { t.trip_number = i + 1; });
+
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
     data: {
