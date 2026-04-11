@@ -45,6 +45,6 @@ export const getDeviceLocationsByDeviceAndDateRange = (deviceId, from, to) => {
   }
   return DeviceLocation.findAll({
     where,
-    order: [['recorded_at', 'ASC']]
+    order: [['recorded_at', 'DESC']]
   });
 };
