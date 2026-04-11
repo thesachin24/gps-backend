@@ -1,3 +1,4 @@
+import Sequelize from 'sequelize';
 import { OFFSET, PAGE_LIMIT } from '../constants';
 import DeviceLocation from '../models/deviceLocation';
 
@@ -34,3 +35,16 @@ export const deleteDeviceLocation = (where) =>
   DeviceLocation.destroy({
     where
   });
+
+export const getDeviceLocationsByDeviceAndDateRange = (deviceId, from, to) => {
+  const where = { device_id: deviceId };
+  if (from || to) {
+    where.recorded_at = {};
+    if (from) where.recorded_at[Sequelize.Op.gte] = from;
+    if (to) where.recorded_at[Sequelize.Op.lte] = to;
+  }
+  return DeviceLocation.findAll({
+    where,
+    order: [['recorded_at', 'ASC']]
+  });
+};

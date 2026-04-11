@@ -5,7 +5,8 @@ import {
   createDeviceLocations,
   deleteDeviceLocations,
   getDeviceLocationDetail,
-  updateDeviceLocationDetail
+  updateDeviceLocationDetail,
+  getDeviceTrips as getDeviceTripsService
 } from '../service/deviceLocationService';
 
 export const getAllDeviceLocationList = async (req, res) => {
@@ -56,6 +57,17 @@ export const deleteDeviceLocation = async (req, res) => {
   const { params: { id } } = req;
   try {
     const response = await deleteDeviceLocations(id);
+    return res.status(OK).json(response);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
+
+export const getDeviceTrips = async (req, res) => {
+  const { query } = req;
+  try {
+    const response = await getDeviceTripsService(query);
     return res.status(OK).json(response);
   } catch (err) {
     logger.error(err);

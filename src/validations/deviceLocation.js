@@ -8,6 +8,8 @@ export const deviceLocation = {
       device_type: Joi.string().optional().allow('', null),
       source: Joi.string().optional().allow('', null),
       search: Joi.string().optional().allow('', null),
+      from: Joi.date().iso().optional(),
+      to: Joi.date().iso().optional(),
       page: Joi.number().optional(),
       limit: Joi.number().optional(),
       sortByRecordedAt: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional()
@@ -49,6 +51,14 @@ export const deviceLocation = {
   idOnly: {
     params: {
       id: Joi.number().integer().required()
+    }
+  },
+  getDeviceTrips: {
+    query: {
+      device_id: Joi.string().trim().required(),
+      from: Joi.date().iso().optional(),
+      to: Joi.date().iso().optional(),
+      stop_duration: Joi.number().integer().min(1).max(1440).optional()
     }
   }
 };

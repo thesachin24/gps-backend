@@ -6,7 +6,8 @@ import {
   createDeviceLocation,
   deleteDeviceLocation,
   getDeviceLocationDetails,
-  updateDeviceLocation
+  updateDeviceLocation,
+  getDeviceTrips
 } from '../controller';
 import { deviceLocation } from '../validations';
 
@@ -26,6 +27,14 @@ deviceLocationRoutes.post(
   validate(deviceLocation.createDeviceLocation),
   catchValidationErrors,
   createDeviceLocation
+);
+
+deviceLocationRoutes.get(
+  '/trips',
+  authenticate,
+  validate(deviceLocation.getDeviceTrips),
+  catchValidationErrors,
+  getDeviceTrips
 );
 
 deviceLocationRoutes.get(
