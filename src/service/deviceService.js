@@ -53,7 +53,7 @@ export const getAllDevices = async payload => {
       [Sequelize.Op.or]: [
         { device_name: searchText },
         { device_id: searchText },
-        { device_type: searchText }
+        // { device_type: searchText }
       ]
     };
   }
