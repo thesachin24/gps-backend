@@ -95,9 +95,9 @@ export const saveGpsLocation = async ({
     const telemetryData = await createTelemetry(telemetryPayload);
 
     // Update hardware device
-    const deviceState = await getDeviceState({ device_id: deviceId });
+    const deviceState = await getDeviceState({ device_id: device.id });
     if (!deviceState) {
-      await createDeviceState({ device_id: deviceId });
+      await createDeviceState({ device_id: device.id });
     }
     await updateDeviceState(deviceState, {
       latitude: toFixedCoordinate(parsed.latitude),
