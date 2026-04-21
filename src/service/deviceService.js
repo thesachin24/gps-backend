@@ -51,7 +51,7 @@ export const getAllDevices = async payload => {
     filter = {
       ...filter,
       [Sequelize.Op.or]: [
-        { name: searchText },
+        { device_name: searchText },
         { device_id: searchText },
         { device_type: searchText }
       ]
@@ -59,7 +59,7 @@ export const getAllDevices = async payload => {
   }
 
   if (sortByName) {
-    order = ['name', sortByName];
+    order = ['device_name', sortByName];
   }
 
   try {
