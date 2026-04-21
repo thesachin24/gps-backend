@@ -1,6 +1,8 @@
+import { Sequelize } from 'sequelize';
 import { DEVICE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
 import deviceModel from '../models/device';
 import sequelize from '../models/index';
+import Telemetry from '../models/telemetry';
 
 export const getDeviceList = (filter, page, pageSize, order = []) =>
   deviceModel.findAndCountAll({
@@ -42,3 +44,17 @@ export const deleteDevice = where =>
   deviceModel.destroy({
     where
   });
+
+
+export const getDeviceTripsByDeviceAndDateRange = (deviceId, from, to) => {
+  const where = { device_id: deviceId };
+  if (from || to) {
+    where.recorded_at = {};
+    if (from) where.recorded_at[Sequelize.Op.gte] = from;
+    if (to) where.recorded_at[Sequelize.Op.lte] = to;
+  }
+  return Telemetry.findAll({
+    where,
+    order: [['recorded_at', 'ASC']]
+  });
+};

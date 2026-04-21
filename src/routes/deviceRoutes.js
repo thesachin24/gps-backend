@@ -6,6 +6,7 @@ import {
   deleteDevice,
   getDeviceDetails,
   getDeviceList,
+  getDeviceTrips,
   updateDevice
 } from '../controller';
 import { device } from '../validations';
@@ -64,6 +65,24 @@ deviceRoutes.get(
   validate(device.idOnly),
   catchValidationErrors,
   getDeviceDetails
+);
+
+/**
+ * @swagger
+ * /devices/{id}/trips:
+ *   get:
+ *     description: Get device trips by id
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get(
+  '/:id/trips',
+  authenticate,
+  validate(device.getDeviceTrips),
+  catchValidationErrors,
+  getDeviceTrips
 );
 
 /**
