@@ -286,6 +286,7 @@ CREATE TABLE device_state (
     longitude        DECIMAL(9,6),
     speed            REAL,
     last_recorded_at TIMESTAMPTZ,
+    metadata         JSONB,
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
