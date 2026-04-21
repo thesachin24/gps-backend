@@ -42,6 +42,20 @@ export const device = {
       id: Joi.number().integer().positive().required()
     }
   },
+  getDeviceLocations: {
+    query: {
+      user_id: Joi.number().integer().optional().allow('', null),
+      device_id: Joi.string().optional().allow('', null),
+      device_type: Joi.string().optional().allow('', null),
+      source: Joi.string().optional().allow('', null),
+      search: Joi.string().optional().allow('', null),
+      from: Joi.date().iso().optional(),
+      to: Joi.date().iso().optional(),
+      page: Joi.number().optional(),
+      limit: Joi.number().optional(),
+      sortByRecordedAt: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional()
+    }
+  },
   getDeviceTrips: {
     params: {
       id: Joi.number().integer().positive().required()

@@ -12,7 +12,8 @@ import {
   createDevices,
   updateDeviceDetail,
   deleteDevices,
-  getDeviceTripsData
+  getDeviceTripsData,
+  getAllDeviceLocationListData
 } from '../service';
 
 export const getDeviceList = async (req, res) => {
@@ -95,6 +96,16 @@ export const deleteDevice = async (req, res) => {
   }
 };
 
+export const getAllDeviceLocationList = async (req, res) => {
+  const { query } = req;
+  try {
+    const response = await getAllDeviceLocationListData(query);
+    return res.status(OK).json(response);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
 
 export const getDeviceTrips = async (req, res) => {
   const { params: { id }, query } = req;

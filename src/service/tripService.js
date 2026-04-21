@@ -1,8 +1,5 @@
 import { MESSAGE_CONSTANTS } from '../constants';
 import { getDeviceTripsByDeviceAndDateRange } from '../dao';
-import {
-  getDeviceLocationsByDeviceAndDateRange
-} from '../dao/deviceLocationDao';
 
 const EARTH_RADIUS_KM = 6371;
 const DEFAULT_STOP_THRESHOLD_MINUTES = 15;

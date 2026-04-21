@@ -5,7 +5,9 @@ import {
   SERVER_ERROR,
   FORBIDDEN,
   CONFLICT,
-  UN_PROCESSABLE_ENTITY
+  UN_PROCESSABLE_ENTITY,
+  OFFSET,
+  PAGE_LIMIT
 } from '../constants';
 import {
   getDeviceList,
@@ -17,7 +19,7 @@ import {
   deleteDevice
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
-import { createDeviceState } from '../dao';
+import { createDeviceState, getDeviceLocationList, getTelemetryList } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -193,5 +195,62 @@ export const deleteDevices = async (id, user_id) => {
       MESSAGE_CONSTANTS.UNABLE_TO_DELETE_DATA,
       err.message
     );
+  }
+};
+
+
+export const getAllDeviceLocationListData = async payload => {
+  let { page, limit, sortByRecordedAt, search } = payload;
+  page = +page || OFFSET;
+  limit = +limit || PAGE_LIMIT;
+
+  let filter = {};
+  if (payload.user_id) {
+    filter.user_id = Number(payload.user_id);
+  }
+  if (payload.device_id) {
+    filter.device_id = String(payload.device_id).trim();
+  }
+  if (payload.device_type) {
+    filter.device_type = String(payload.device_type).trim();
+  }
+  if (payload.source) {
+    filter.source = String(payload.source).trim();
+  }
+  if (payload.from || payload.to) {
+    filter.recorded_at = {};
+    if (payload.from) filter.recorded_at[Sequelize.Op.gte] = new Date(payload.from);
+    if (payload.to) filter.recorded_at[Sequelize.Op.lte] = new Date(payload.to);
+  }
+  if (search) {
+    const searchText = { [Sequelize.Op.iLike]: `%${search}%` };
+    filter = {
+      ...filter,
+      [Sequelize.Op.or]: [
+        { device_id: searchText },
+        { device_type: searchText },
+        { source: searchText }
+      ]
+    };
+  }
+
+  let order = ['recorded_at', 'desc'];
+  if (sortByRecordedAt) {
+    order = ['recorded_at', sortByRecordedAt];
+  }
+
+  try {
+    const list = await getTelemetryList(filter, page, limit, order);
+    return {
+      message: MESSAGE_CONSTANTS.SUCCESS,
+      data: {
+        list: list.rows,
+        totalPages: Math.ceil(list.count / limit),
+        currentPage: page,
+        totalCount: list.count
+      }
+    };
+  } catch (err) {
+    throw new CustomError(SERVER_ERROR, err.message);
   }
 };

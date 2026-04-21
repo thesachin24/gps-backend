@@ -4,6 +4,7 @@ import { catchValidationErrors, authenticate } from '../middleware/index';
 import {
   createDevice,
   deleteDevice,
+  getAllDeviceLocationList,
   getDeviceDetails,
   getDeviceList,
   getDeviceTrips,
@@ -65,6 +66,24 @@ deviceRoutes.get(
   validate(device.idOnly),
   catchValidationErrors,
   getDeviceDetails
+);
+
+/**
+ * @swagger
+ * /devices/{id}/locations:
+ *   get:
+ *     description: Get device locations by id
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get(
+  '/:id/locations',
+  authenticate,
+  validate(device.getDeviceLocations),
+  catchValidationErrors,
+  getAllDeviceLocationList
 );
 
 /**
