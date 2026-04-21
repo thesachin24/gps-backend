@@ -112,7 +112,7 @@ export const createDevices = async (payload, owner_id, owner_type) => {
   try {
     const created = await createDevice(row);
     //Create device state
-    await createDeviceState({ device_id: deviceId });
+    await createDeviceState({ device_id: created.id });
 
     return {
       message: MESSAGE_CONSTANTS.DEVICE_CREATE_SUCCESS,
