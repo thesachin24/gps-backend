@@ -15,6 +15,7 @@ export const device = {
   createDevice: {
     body: {
       device_id: Joi.string().trim().required(),
+      device_name: Joi.string().trim().optional().allow('', null),
       device_type: Joi.string().trim().optional(),
       firmware_version: Joi.string().trim().optional().allow('', null),
       sim_number: Joi.string().trim().optional().allow('', null),
@@ -29,6 +30,7 @@ export const device = {
     },
     body: {
       device_id: Joi.string().trim().optional(),
+      device_name: Joi.string().trim().optional(),
       device_type: Joi.string().trim().optional(),
       firmware_version: Joi.string().trim().optional().allow('', null),
       sim_number: Joi.string().trim().optional().allow('', null),

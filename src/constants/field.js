@@ -421,6 +421,7 @@ export const HARDWARE_DEVICE_FIELD = [
 export const DEVICE_FIELD = [
   "id",
   "device_id",
+  "device_name",
   "device_type",
   "firmware_version",
   "sim_number",

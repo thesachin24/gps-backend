@@ -16,6 +16,10 @@ const Device = sequelize.define(
       unique: true,
       type: Sequelize.STRING,
     },
+    device_name: {
+      allowNull: true,
+      type: Sequelize.STRING,
+    },
     // Type of device: GPS_TRACKER, OBD, DASHCAM
     device_type: {
       type: Sequelize.ENUM("GPS_TRACKER", "OBD", "DASHCAM"),

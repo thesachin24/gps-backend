@@ -226,6 +226,7 @@ CREATE TYPE owner_type_enum AS ENUM ('USER', 'DISTRIBUTOR', 'ADMIN');
 CREATE TABLE devices (
     id               BIGSERIAL         PRIMARY KEY,
     device_id        VARCHAR(255)      NOT NULL UNIQUE,
+    device_name      VARCHAR(255),
     device_type      device_type_enum  NOT NULL DEFAULT 'GPS_TRACKER',
     firmware_version VARCHAR(255),
     sim_number       VARCHAR(255),

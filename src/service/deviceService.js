@@ -24,6 +24,7 @@ import { createDeviceState, getDeviceLocationList, getTelemetryList } from '../d
 const pickUpdatableFields = payload => {
   const allowed = [
     'device_id',
+    'device_name',
     'device_type',
     'firmware_version',
     'sim_number',
@@ -103,6 +104,7 @@ export const createDevices = async (payload, owner_id, owner_type) => {
     owner_id,
     owner_type,
     device_id: deviceId,
+    device_name: payload.device_name != null ? payload.device_name : null,
     device_type: payload.device_type || 'GPS_TRACKER',
     firmware_version: payload.firmware_version != null ? payload.firmware_version : null,
     sim_number: payload.sim_number != null ? payload.sim_number : null,
