@@ -1,0 +1,105 @@
+import express from 'express';
+import validate from 'express-joi-validator';
+import { catchValidationErrors, authenticate } from '../middleware/index';
+import {
+  createDevice,
+  deleteDevice,
+  getDeviceDetails,
+  getDeviceList,
+  updateDevice
+} from '../controller';
+import { device } from '../validations';
+
+const deviceRoutes = express.Router({ mergeParams: true });
+
+/**
+ * @swagger
+ * /devices:
+ *   get:
+ *     description: List devices for the authenticated user
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get(
+  '/',
+  authenticate,
+  validate(device.getDeviceList),
+  catchValidationErrors,
+  getDeviceList
+);
+
+/**
+ * @swagger
+ * /devices:
+ *   post:
+ *     description: Register a device
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.post(
+  '/',
+  authenticate,
+  validate(device.createDevice),
+  catchValidationErrors,
+  createDevice
+);
+
+/**
+ * @swagger
+ * /devices/{id}:
+ *   get:
+ *     description: Get device by id
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get(
+  '/:id',
+  authenticate,
+  validate(device.idOnly),
+  catchValidationErrors,
+  getDeviceDetails
+);
+
+/**
+ * @swagger
+ * /devices/{id}:
+ *   put:
+ *     description: Update device
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.put(
+  '/:id',
+  authenticate,
+  validate(device.updateDevice),
+  catchValidationErrors,
+  updateDevice
+);
+
+/**
+ * @swagger
+ * /devices/{id}:
+ *   delete:
+ *     description: Delete device
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.delete(
+  '/:id',
+  authenticate,
+  validate(device.idOnly),
+  catchValidationErrors,
+  deleteDevice
+);
+
+export default deviceRoutes;

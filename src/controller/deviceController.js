@@ -7,14 +7,14 @@ import {
   PAGE_LIMIT
 } from '../constants';
 import {
-  getAllHardwareDevices,
-  getHardwareDeviceDetail,
-  createHardwareDevices,
-  updateHardwareDeviceDetail,
-  deleteHardwareDevices
-} from '../service/hardwareDeviceService';
+  getAllDevices,
+  getDeviceDetail,
+  createDevices,
+  updateDeviceDetail,
+  deleteDevices
+} from '../service';
 
-export const getHardwareDeviceList = async (req, res) => {
+export const getDeviceList = async (req, res) => {
   let {
     query: { search, page, limit, sortByName },
     auth: { user_id }
@@ -22,28 +22,28 @@ export const getHardwareDeviceList = async (req, res) => {
   page = +page || OFFSET;
   limit = +limit || PAGE_LIMIT;
   try {
-    const filter = { user_id };
-    const hardwareDeviceList = await getAllHardwareDevices({
+    const filter = { owner_id: user_id, owner_type: 'USER' };
+    const deviceList = await getAllDevices({
       search,
       offset: page,
       limit,
       sortByName,
       filter
     });
-    return res.status(OK).json(hardwareDeviceList);
+    return res.status(OK).json(deviceList);
   } catch (err) {
     logger.error(err);
     return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
   }
 };
 
-export const getHardwareDeviceDetails = async (req, res) => {
+export const getDeviceDetails = async (req, res) => {
   const {
     auth: { user_id },
     params: { id }
   } = req;
   try {
-    const detail = await getHardwareDeviceDetail(id, user_id);
+    const detail = await getDeviceDetail(id, user_id);
     return res.status(OK).json(detail);
   } catch (err) {
     logger.error(err);
@@ -51,13 +51,13 @@ export const getHardwareDeviceDetails = async (req, res) => {
   }
 };
 
-export const createHardwareDevice = async (req, res) => {
+export const createDevice = async (req, res) => {
   try {
     const {
       auth: { user_id },
       body
     } = req;
-    const created = await createHardwareDevices(body, user_id);
+    const created = await createDevices(body, user_id, 'USER');
     return res.status(CREATED).json(created);
   } catch (err) {
     logger.error(err);
@@ -65,14 +65,14 @@ export const createHardwareDevice = async (req, res) => {
   }
 };
 
-export const updateHardwareDevice = async (req, res) => {
+export const updateDevice = async (req, res) => {
   const {
     body,
     auth: { user_id },
     params: { id }
   } = req;
   try {
-    const updated = await updateHardwareDeviceDetail(id, body, user_id);
+    const updated = await updateDeviceDetail(id, body, user_id);
     return res.status(OK).json(updated);
   } catch (err) {
     logger.error(err);
@@ -80,13 +80,13 @@ export const updateHardwareDevice = async (req, res) => {
   }
 };
 
-export const deleteHardwareDevice = async (req, res) => {
+export const deleteDevice = async (req, res) => {
   const {
     auth: { user_id },
     params: { id }
   } = req;
   try {
-    const result = await deleteHardwareDevices(id, user_id);
+    const result = await deleteDevices(id, user_id);
     return res.status(OK).json(result);
   } catch (err) {
     logger.error(err);

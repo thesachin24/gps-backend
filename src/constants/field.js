@@ -418,6 +418,19 @@ export const HARDWARE_DEVICE_FIELD = [
   "updated_at"
 ];
 
+export const DEVICE_FIELD = [
+  "id",
+  "device_id",
+  "device_type",
+  "firmware_version",
+  "sim_number",
+  // "owner_id",
+  // "owner_type",
+  "is_active",
+  "created_at",
+  "updated_at"
+];
+
 export const BUSINESS_PHOTO_FIELD = [
   "id",
   "business_id",
@@ -462,3 +475,29 @@ export const SERVICES_FIELD = [
 ];
 
 export const REFERRAL_FIELD = ["id", "refer_by", "refer_to"];
+
+export const ASSET_FIELD = [
+  "id",
+  "user_id",
+  "type",
+  "name",
+  "registration_number",
+  "make",
+  "model",
+  "color",
+  "metadata",
+  "created_at",
+  "updated_at"
+];
+
+
+export const TELEMETRY_FIELD = [
+  "id",
+  "device_id",
+  "latitude",
+  "longitude",
+  "speed",
+  "heading",
+  "ignition",
+  "recorded_at",
+];

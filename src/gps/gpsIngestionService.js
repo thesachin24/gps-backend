@@ -1,6 +1,7 @@
 import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
-import { getHardwareDevice, updateHardwareDevice } from '../dao/hardwareDeviceDao';
+import { getDevice, updateDevice } from '../dao/deviceDao';
+import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -23,9 +24,9 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     return null;
   }
 
-  const hardwareDevice = await getHardwareDevice({ device_id: deviceId, is_active: true });
-  if (!hardwareDevice?.user_id) {
-    logger.info(`Skipping heartbeat persist, hardware device not mapped for ${deviceId}`);
+  const device = await getDevice({ device_id: deviceId, is_active: true });
+  if (!device) {
+    logger.info(`Skipping heartbeat persist, device not mapped for ${deviceId}`);
     return null;
   }
 
@@ -34,7 +35,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       ...parsed.heartbeat,
       received_at: new Date().toISOString()
     };
-    await updateHardwareDevice(hardwareDevice, {
+    await updateDeviceState(device, {
       heartbeat: heartbeatData,
       updated_at: new Date()
     });
@@ -58,54 +59,63 @@ export const saveGpsLocation = async ({
     return null;
   }
 
-  const hardwareDevice = await getHardwareDevice({ device_id: deviceId, is_active: true });
-  if (!hardwareDevice?.user_id) {
-    logger.info(`Skipping GPS persist, hardware device not mapped for ${deviceId}`);
+  const device = await getDevice({ device_id: deviceId, is_active: true });
+  if (!device) {
+    logger.info(`Skipping GPS persist, device not mapped for ${deviceId}`);
     return null;
   }
 
   const recordedAt = parseDateOrFallback(parsed.timestamp, new Date());
-  const locationPayload = {
-    user_id: hardwareDevice.user_id,
+  const telemetryPayload = {
+    user_id: device.user_id,
     device_id: deviceId,
-    device_type: hardwareDevice.device_type || transport || 'gps_tracker',
+    device_type: device.device_type || transport || 'gps_tracker',
     latitude: parsed.latitude,
     longitude: parsed.longitude,
     recorded_at: recordedAt,
     speed: parsed.speed !== undefined ? parsed.speed : null,
     heading: parsed.heading !== undefined ? parsed.heading : null,
+    ignition: parsed.ignition !== undefined ? parsed.ignition : null,
     source: source || parsed.source || parsed.protocol || 'gps'
   };
 
   try {
     logger.info(`GPS persist start: ${JSON.stringify({
       deviceId,
-      user_id: locationPayload.user_id,
+      user_id: telemetryPayload.user_id,
       transport: transport || null,
-      source: locationPayload.source,
-      latitude: locationPayload.latitude,
-      longitude: locationPayload.longitude,
-      recorded_at: locationPayload.recorded_at
+      source: telemetryPayload.source,
+      latitude: telemetryPayload.latitude,
+      longitude: telemetryPayload.longitude,
+      recorded_at: telemetryPayload.recorded_at
     })}`);
 
     // Create device locations
-    const location = await createDeviceLocation(locationPayload);
+    // const location = await createDeviceLocation(locationPayload);
+    const telemetryData = await createTelemetry(telemetryPayload);
 
     // Update hardware device
-    await updateHardwareDevice(hardwareDevice, {
+    const deviceState = await getDeviceState({ device_id: deviceId });
+    if (!deviceState) {
+      await createDeviceState({ device_id: deviceId });
+    }
+    await updateDeviceState(deviceState, {
       latitude: toFixedCoordinate(parsed.latitude),
       longitude: toFixedCoordinate(parsed.longitude),
-      last_recorded_at: recordedAt,
-      updated_at: new Date(),
+      speed: parsed.speed !== undefined ? parsed.speed : null,
+      heading: parsed.heading !== undefined ? parsed.heading : null,
+      ignition: parsed.ignition !== undefined ? parsed.ignition : null,
       metadata: metadata || {
         transport,
         parsed
-      }
+      },
+      last_recorded_at: recordedAt,
+      updated_at: new Date()
     });
-    logger.info(`GPS persist success: deviceId=${deviceId} locationId=${location?.id || 'na'}`);
-    return location;
+    logger.info(`GPS persist success: deviceId=${deviceId} telemetryId=${telemetryData?.id || 'na'}`);
+    return telemetryData;
   } catch (error) {
-    logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(locationPayload)}`);
+    logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(telemetryPayload)}`);
     return null;
   }
 };

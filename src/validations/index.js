@@ -6,4 +6,5 @@ export { admin } from './admin';
 export { banner } from './banner';
 export { payment } from './payment';
 export { deviceLocation } from './deviceLocation';
-export { hardwareDevice } from './hardwareDevice';
+export { device } from './device';
+export { asset } from './asset';

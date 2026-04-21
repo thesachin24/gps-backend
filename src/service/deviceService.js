@@ -8,22 +8,25 @@ import {
   UN_PROCESSABLE_ENTITY
 } from '../constants';
 import {
-  getHardwareDeviceList,
-  getHardwareDevice,
-  getHardwareDeviceById,
-  getHardwareDeviceByDeviceIdIgnoreCase,
-  createHardwareDevice,
-  updateHardwareDevice,
-  deleteHardwareDevice
-} from '../dao/hardwareDeviceDao';
+  getDeviceList,
+  getDevice,
+  getDeviceById,
+  getDeviceByDeviceIdIgnoreCase,
+  createDevice,
+  updateDevice,
+  deleteDevice
+} from '../dao/deviceDao';
 import { CustomError } from '../utils';
+import { createDeviceState } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
     'device_id',
     'device_type',
-    'name',
-    'metadata',
+    'firmware_version',
+    'sim_number',
+    'owner_id',
+    'owner_type',
     'is_active'
   ];
   const out = {};
@@ -35,7 +38,7 @@ const pickUpdatableFields = payload => {
   return out;
 };
 
-export const getAllHardwareDevices = async payload => {
+export const getAllDevices = async payload => {
   const { search, offset, limit, sortByName } = payload;
   let { filter } = payload;
   let order = ['id', 'desc'];
@@ -57,7 +60,7 @@ export const getAllHardwareDevices = async payload => {
   }
 
   try {
-    const list = await getHardwareDeviceList(filter, offset, limit, order);
+    const list = await getDeviceList(filter, offset, limit, order);
     return {
       message: MESSAGE_CONSTANTS.SUCCESS,
       data: {
@@ -72,8 +75,8 @@ export const getAllHardwareDevices = async payload => {
   }
 };
 
-export const getHardwareDeviceDetail = async (id, user_id) => {
-  const data = await getHardwareDeviceById({ id, user_id });
+export const getDeviceDetail = async (id, user_id) => {
+  const data = await getDeviceById({ id, user_id });
   if (!data) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
@@ -83,35 +86,41 @@ export const getHardwareDeviceDetail = async (id, user_id) => {
   };
 };
 
-export const createHardwareDevices = async (payload, user_id) => {
+export const createDevices = async (payload, owner_id, owner_type) => {
   const deviceId = String(payload.device_id || '').trim();
   if (!deviceId) {
     throw new CustomError(UN_PROCESSABLE_ENTITY, 'device_id is required.');
   }
 
-  const existing = await getHardwareDeviceByDeviceIdIgnoreCase(deviceId);
+  const existing = await getDeviceByDeviceIdIgnoreCase(deviceId);
   if (existing) {
-    throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.HARDWARE_DEVICE_ALREADY_EXISTS);
+    throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
   }
 
   const row = {
-    user_id,
+    owner_id,
+    owner_type,
     device_id: deviceId,
     device_type: payload.device_type || 'GPS_TRACKER',
+    firmware_version: payload.firmware_version != null ? payload.firmware_version : null,
+    sim_number: payload.sim_number != null ? payload.sim_number : null,
     name: payload.name != null ? payload.name : null,
     metadata: payload.metadata != null ? payload.metadata : null,
     is_active: payload.is_active !== undefined ? !!payload.is_active : true
   };
 
   try {
-    const created = await createHardwareDevice(row);
+    const created = await createDevice(row);
+    //Create device state
+    await createDeviceState({ device_id: deviceId });
+
     return {
-      message: MESSAGE_CONSTANTS.HARDWARE_DEVICE_CREATE_SUCCESS,
+      message: MESSAGE_CONSTANTS.DEVICE_CREATE_SUCCESS,
       data: created
     };
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
-      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.HARDWARE_DEVICE_ALREADY_EXISTS);
+      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
     }
     throw new CustomError(
       SERVER_ERROR,
@@ -121,8 +130,8 @@ export const createHardwareDevices = async (payload, user_id) => {
   }
 };
 
-export const updateHardwareDeviceDetail = async (id, payload, user_id) => {
-  const device = await getHardwareDevice({ id });
+export const updateDeviceDetail = async (id, payload, user_id) => {
+  const device = await getDevice({ id });
   if (!device) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
@@ -133,9 +142,9 @@ export const updateHardwareDeviceDetail = async (id, payload, user_id) => {
   const updates = pickUpdatableFields(payload);
   if (updates.device_id !== undefined) {
     updates.device_id = String(updates.device_id).trim();
-    const other = await getHardwareDeviceByDeviceIdIgnoreCase(updates.device_id);
+    const other = await getDeviceByDeviceIdIgnoreCase(updates.device_id);
     if (other && String(other.id) !== String(id)) {
-      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.HARDWARE_DEVICE_ALREADY_EXISTS);
+      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
     }
   }
 
@@ -147,14 +156,14 @@ export const updateHardwareDeviceDetail = async (id, payload, user_id) => {
   }
 
   try {
-    const updated = await updateHardwareDevice(device, updates);
+    const updated = await updateDevice(device, updates);
     return {
       message: MESSAGE_CONSTANTS.SUCCESS,
       data: updated
     };
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
-      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.HARDWARE_DEVICE_ALREADY_EXISTS);
+      throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
     }
     throw new CustomError(
       SERVER_ERROR,
@@ -164,8 +173,8 @@ export const updateHardwareDeviceDetail = async (id, payload, user_id) => {
   }
 };
 
-export const deleteHardwareDevices = async (id, user_id) => {
-  const device = await getHardwareDevice({ id });
+export const deleteDevices = async (id, user_id) => {
+  const device = await getDevice({ id });
   if (!device) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
@@ -174,7 +183,7 @@ export const deleteHardwareDevices = async (id, user_id) => {
   }
 
   try {
-    await deleteHardwareDevice({ id });
+    await deleteDevice({ id });
     return {
       message: MESSAGE_CONSTANTS.SUCCESS
     };

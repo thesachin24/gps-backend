@@ -152,6 +152,13 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     HARDWARE_DEVICE_CREATE_SUCCESS: 'Hardware device has been successfully registered.',
     HARDWARE_DEVICE_ALREADY_EXISTS: 'A device with this device_id already exists.',
 
+    /* Asset */
+    ASSET_CREATE_SUCCESS: 'Asset has been successfully created.',
+    ASSET_UPDATE_SUCCESS: 'Asset has been successfully updated.',
+    ASSET_DELETE_SUCCESS: 'Asset has been successfully deleted.',
+    ASSET_NOT_FOUND: 'Asset not found.',
+    UNABLE_TO_UPDATE_DATA: 'Unable to Update the Data. Please try again later.',
+
     /* Favorite */
     FAVORITE_CREATE_SUCCESS: 'Favorite has been successfully submitted.',
     FAVORITE_UPDATE_SUCCESS: 'Favorite has been successfully updated.',
@@ -174,4 +181,14 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     CATEGORY_UPDATE_SUCCESS: 'Category has been successfully updated.',
     SUB_CATEGORY_CREATE_SUCCESS: 'Sub Category has been successfully submitted.',
     SUB_CATEGORY_UPDATE_SUCCESS: 'Sub Category has been successfully updated.',
+
+    /* Device */
+    DEVICE_CREATE_SUCCESS: 'Device has been successfully created.',
+    DEVICE_UPDATE_SUCCESS: 'Device has been successfully updated.',
+    DEVICE_DELETE_SUCCESS: 'Device has been successfully deleted.',
+    DEVICE_NOT_FOUND: 'Device not found.',
+    DEVICE_ALREADY_EXISTS: 'Device already exists.',
+    DEVICE_NOT_ACTIVE: 'Device is not active.',
+    DEVICE_NOT_OWNER: 'Device is not owned by you.',
+    DEVICE_NOT_OWNER_TYPE: 'Device is not owned by you.',
 });

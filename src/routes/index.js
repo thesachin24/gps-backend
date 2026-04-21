@@ -7,7 +7,8 @@ const swagger = require('swagger-ui-express');
 import swaggerConfig from '../config/swagger';
 import authRoutes from './authRoutes';
 import deviceLocationRoutes from './deviceLocationRoutes';
-import hardwareDeviceRoutes from './hardwareDeviceRoutes';
+import deviceRoutes from './deviceRoutes';
+import assetRoutes from './assetRoutes';
 import commonRoutes from './commonRoutes';
 import profileRoutes from './profileRoutes';
 
@@ -17,7 +18,9 @@ router.use('/auth', authRoutes);
 
 router.use('/device-locations', deviceLocationRoutes);
 
-router.use('/hardware-devices', hardwareDeviceRoutes);
+router.use('/devices', deviceRoutes);
+
+router.use('/assets', assetRoutes);
 
 router.use('/common', commonRoutes);
 

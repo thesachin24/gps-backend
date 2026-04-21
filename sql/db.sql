@@ -198,3 +198,111 @@ CREATE INDEX idx_device_locations_user_id
     ON device_locations (user_id);
 
 ------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE TABLE assets (
+    id                  BIGSERIAL        PRIMARY KEY,
+    user_id             INTEGER          NOT NULL,
+    type                VARCHAR(255)  NOT NULL,
+    name                VARCHAR(255),
+    registration_number VARCHAR(255),
+    make                VARCHAR(255),
+    model               VARCHAR(255),
+    color               VARCHAR(255),
+    metadata            JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_assets_user_id ON assets (user_id);
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE TYPE device_type_enum AS ENUM ('GPS_TRACKER', 'OBD', 'DASHCAM');
+
+CREATE TYPE owner_type_enum AS ENUM ('USER', 'DISTRIBUTOR', 'ADMIN');
+
+CREATE TABLE devices (
+    id               BIGSERIAL         PRIMARY KEY,
+    device_id        VARCHAR(255)      NOT NULL UNIQUE,
+    device_type      device_type_enum  NOT NULL DEFAULT 'GPS_TRACKER',
+    firmware_version VARCHAR(255),
+    sim_number       VARCHAR(255),
+    owner_id         BIGINT,
+    owner_type       owner_type_enum,
+    is_active        BOOLEAN           NOT NULL DEFAULT TRUE,
+    created_at       TIMESTAMPTZ       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMPTZ       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_devices_is_active ON devices (is_active);
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE TABLE device_asset_map (
+    id          BIGSERIAL   PRIMARY KEY,
+    device_id   BIGINT      NOT NULL REFERENCES devices (id),
+    asset_id    BIGINT      NOT NULL REFERENCES assets (id),
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    removed_at  TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_device_asset_map_device_id ON device_asset_map (device_id);
+CREATE INDEX idx_device_asset_map_asset_id  ON device_asset_map (asset_id);
+CREATE INDEX idx_device_asset_map_active    ON device_asset_map (device_id) WHERE removed_at IS NULL;
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE TABLE telemetry (
+    id          BIGSERIAL    PRIMARY KEY,
+    device_id   BIGINT       NOT NULL REFERENCES devices (id),
+    latitude    DECIMAL(9,6) NOT NULL,
+    longitude   DECIMAL(9,6) NOT NULL,
+    speed       REAL,
+    heading     REAL,
+    ignition    BOOLEAN,
+    recorded_at TIMESTAMPTZ  NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_telemetry_device_id          ON telemetry (device_id);
+CREATE INDEX idx_telemetry_recorded_at        ON telemetry (recorded_at);
+CREATE INDEX idx_telemetry_device_recorded_at ON telemetry (device_id, recorded_at DESC);
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE TABLE device_state (
+    id               BIGSERIAL    PRIMARY KEY,
+    device_id        BIGINT       NOT NULL REFERENCES devices (id),
+    latitude         DECIMAL(9,6),
+    longitude        DECIMAL(9,6),
+    speed            REAL,
+    last_recorded_at TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_device_state_device_id ON device_state (device_id);
+CREATE INDEX idx_device_state_last_recorded_at ON device_state (last_recorded_at);
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+-- Migration: add owner_id / owner_type to existing devices table
+-- Run this block only if the table already exists (skip on fresh installs)
+CREATE TYPE IF NOT EXISTS owner_type_enum AS ENUM ('USER', 'DISTRIBUTOR', 'ADMIN');
+
+ALTER TABLE devices
+    ADD COLUMN IF NOT EXISTS owner_id   BIGINT,
+    ADD COLUMN IF NOT EXISTS owner_type owner_type_enum;
+
+CREATE INDEX IF NOT EXISTS idx_devices_owner ON devices (owner_type, owner_id);
+
+------------------------------------------------------------------------------------------------------------------------
