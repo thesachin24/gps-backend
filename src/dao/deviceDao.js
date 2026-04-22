@@ -5,6 +5,7 @@ import sequelize from '../models/index';
 import Telemetry from '../models/telemetry';
 import DeviceAssetMap from '../models/deviceAssetMap';
 import Asset from '../models/asset';
+import DeviceState from '../models/deviceState';
 
 export const getDeviceList = (filter, page, pageSize, order = []) =>
   deviceModel.findAndCountAll({
@@ -13,6 +14,11 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
     limit: pageSize || PAGE_LIMIT,
     where: filter,
     include: [
+      {
+        model: DeviceState,
+        as: 'device_state',
+        attributes: ['latitude', 'longitude', 'speed', 'last_recorded_at']
+      },
       {
         model: DeviceAssetMap,
         as: 'device_asset',
