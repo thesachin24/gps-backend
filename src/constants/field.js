@@ -425,7 +425,7 @@ export const DEVICE_FIELD = [
   "device_type",
   "firmware_version",
   "sim_number",
-  // "owner_id",
+  "owner_id",
   // "owner_type",
   "is_active",
   "created_at",

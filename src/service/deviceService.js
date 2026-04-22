@@ -139,7 +139,7 @@ export const updateDeviceDetail = async (id, payload, user_id) => {
   if (!device) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
-  if (user_id && device.user_id !== user_id) {
+  if (user_id && device.owner_id !== user_id) {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
   }
 
