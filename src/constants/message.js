@@ -191,4 +191,7 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     DEVICE_NOT_ACTIVE: 'Device is not active.',
     DEVICE_NOT_OWNER: 'Device is not owned by you.',
     DEVICE_NOT_OWNER_TYPE: 'Device is not owned by you.',
+    DEVICE_ALREADY_MAPPED_TO_ASSET: 'Device is already mapped to an asset.',
+    DEVICE_NOT_MAPPED_TO_ASSET: 'Device is not mapped to this asset.',
+    DEVICE_UNASSIGNED_FROM_ASSET: 'Device has been successfully unassigned from the asset.',
 });

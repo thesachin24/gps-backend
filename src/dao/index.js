@@ -8,4 +8,4 @@ export * from './optionDao';
 export * from './commonDao';
 export * from './telemetryDao';
 export * from './deviceStateDao';
-// export * from './deviceAssetMapDao';
+export * from './deviceAssetMapDao';

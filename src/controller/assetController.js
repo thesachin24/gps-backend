@@ -11,8 +11,10 @@ import {
   getAssetDetail,
   createAssets,
   updateAssetDetail,
-  deleteAssets
-} from '../service/assetService';
+  deleteAssets,
+  mapDeviceToAssetService,
+  unassignDeviceFromAssetService
+} from '../service';
 
 export const getAssetList = async (req, res) => {
   let {
@@ -87,6 +89,36 @@ export const deleteAsset = async (req, res) => {
   } = req;
   try {
     const result = await deleteAssets(id, user_id);
+    return res.status(OK).json(result);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
+
+export const mapDeviceToAsset = async (req, res) => {
+  const {
+    auth: { user_id },
+    params: { id },
+    body: { device_id }
+  } = req;
+  try {
+    const result = await mapDeviceToAssetService(id, device_id, user_id);
+    return res.status(OK).json(result);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
+
+export const unassignDeviceFromAsset = async (req, res) => {
+  const {
+    auth: { user_id },
+    params: { id },
+    body: { device_id }
+  } = req;
+  try {
+    const result = await unassignDeviceFromAssetService(id, device_id, user_id);
     return res.status(OK).json(result);
   } catch (err) {
     logger.error(err);

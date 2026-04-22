@@ -3,6 +3,7 @@ import { DEVICE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
 import deviceModel from '../models/device';
 import sequelize from '../models/index';
 import Telemetry from '../models/telemetry';
+import DeviceAssetMap from '../models/deviceAssetMap';
 
 export const getDeviceList = (filter, page, pageSize, order = []) =>
   deviceModel.findAndCountAll({

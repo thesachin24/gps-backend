@@ -43,5 +43,21 @@ export const asset = {
     params: {
       id: Joi.number().integer().positive().required()
     }
+  },
+  mapDeviceToAsset: {
+    params: {
+      id: Joi.number().integer().positive().required()
+    },
+    body: {
+      device_id: Joi.number().integer().positive().required()
+    }
+  },
+  unassignDeviceFromAsset: {
+    params: {
+      id: Joi.number().integer().positive().required()
+    },
+    body: {
+      device_id: Joi.number().integer().positive().required()
+    }
   }
 };

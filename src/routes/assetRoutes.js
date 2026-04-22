@@ -6,6 +6,8 @@ import {
   deleteAsset,
   getAssetDetails,
   getAssetList,
+  mapDeviceToAsset,
+  unassignDeviceFromAsset,
   updateAsset
 } from '../controller';
 import { asset } from '../validations';
@@ -100,6 +102,42 @@ assetRoutes.delete(
   validate(asset.idOnly),
   catchValidationErrors,
   deleteAsset
+);
+
+/**
+ * @swagger
+ * /assets/{id}/map-device:
+ *   post:
+ *     description: Map a device to an asset
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Asset
+ */
+assetRoutes.post(
+  '/:id/map-device',
+  authenticate,
+  validate(asset.mapDeviceToAsset),
+  catchValidationErrors,
+  mapDeviceToAsset
+);
+
+/**
+ * @swagger
+ * /assets/{id}/unassign-device:
+ *   post:
+ *     description: Unassign a device from an asset
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Asset
+ */
+assetRoutes.post(
+  '/:id/unassign-device',
+  authenticate,
+  validate(asset.unassignDeviceFromAsset),
+  catchValidationErrors,
+  unassignDeviceFromAsset
 );
 
 export default assetRoutes;

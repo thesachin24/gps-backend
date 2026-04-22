@@ -21,6 +21,8 @@ const Asset = sequelize.define(
         "TRUCK",
         "BOAT",
         "CONTAINER",
+        "PET",
+        "PERSON",
         "OTHER",
       ),
       allowNull: false,

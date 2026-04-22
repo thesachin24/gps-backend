@@ -3,7 +3,8 @@ import {
   MESSAGE_CONSTANTS,
   NOT_FOUND,
   SERVER_ERROR,
-  FORBIDDEN
+  FORBIDDEN,
+  CONFLICT
 } from '../constants';
 import {
   getAssetList,
@@ -14,6 +15,7 @@ import {
   deleteAsset
 } from '../dao/assetDao';
 import { CustomError } from '../utils';
+import { createDeviceAssetMap, deleteDeviceAssetMap, getDevice, getDeviceAssetMap } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -163,4 +165,56 @@ export const deleteAssets = async (id, user_id) => {
       err.message
     );
   }
+};
+
+export const unassignDeviceFromAssetService = async (id, device_id, user_id) => {
+  const asset = await getAsset({ id });
+  if (!asset) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.ASSET_NOT_FOUND);
+  }
+  if (user_id && asset.user_id !== user_id) {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.DEVICE_NOT_OWNER);
+  }
+  const device = await getDevice({ id: device_id }, ["owner_id"]);
+  if (!device) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
+  }
+  if (user_id && device.owner_id !== user_id) {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.DEVICE_NOT_OWNER);
+  }
+  const existingMap = await getDeviceAssetMap({ device_id, asset_id: id });
+  if (!existingMap) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_MAPPED_TO_ASSET);
+  }
+  await deleteDeviceAssetMap({ device_id, asset_id: id });
+  return {
+    message: MESSAGE_CONSTANTS.DEVICE_UNASSIGNED_FROM_ASSET
+  };
+};
+
+export const mapDeviceToAssetService = async (id, device_id, user_id) => {
+  const asset = await getAsset({ id });
+  if (!asset) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.ASSET_NOT_FOUND);
+  }
+  if (user_id && asset.user_id !== user_id) {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.DEVICE_NOT_OWNER);
+  }
+  const device = await getDevice({ id: device_id }, ["owner_id"]);
+  if (!device) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
+  }
+  if (user_id && device.owner_id !== user_id) {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.DEVICE_NOT_OWNER);
+  }
+  //Check if the device is already mapped to an asset
+  const existingMap = await getDeviceAssetMap({ device_id });
+  if (existingMap) {
+    throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_MAPPED_TO_ASSET);
+  }
+  const map = await createDeviceAssetMap({ device_id, asset_id: id });
+  return {
+    message: MESSAGE_CONSTANTS.SUCCESS,
+    data: map
+  };
 };
