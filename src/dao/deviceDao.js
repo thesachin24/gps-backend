@@ -4,6 +4,7 @@ import deviceModel from '../models/device';
 import sequelize from '../models/index';
 import Telemetry from '../models/telemetry';
 import DeviceAssetMap from '../models/deviceAssetMap';
+import Asset from '../models/asset';
 
 export const getDeviceList = (filter, page, pageSize, order = []) =>
   deviceModel.findAndCountAll({
@@ -11,6 +12,20 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
     offset: page * pageSize || OFFSET,
     limit: pageSize || PAGE_LIMIT,
     where: filter,
+    include: [
+      {
+        model: DeviceAssetMap,
+        as: 'device_asset',
+        attributes: ['id', 'asset_id', 'assigned_at', 'removed_at'],
+        include: [
+          {
+            model: Asset,
+            as: 'asset',
+            attributes: ['id', 'name', 'type', 'registration_number', 'make', 'model', 'color', 'metadata']
+          }
+        ]
+      }
+    ],
     order: order.length ? [order] : [['id', 'DESC']]
   });
 

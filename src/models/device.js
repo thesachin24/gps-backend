@@ -1,5 +1,6 @@
 import Sequelize from "sequelize";
 import sequelize from "./index";
+import DeviceAssetMap from "./deviceAssetMap";
 
 const Device = sequelize.define(
   "devices",
@@ -67,4 +68,6 @@ const Device = sequelize.define(
   },
 );
 
+Device.hasOne(DeviceAssetMap, { foreignKey: 'device_id', as: 'device_asset' });
+DeviceAssetMap.belongsTo(Device, { foreignKey: 'device_id', as: 'device_asset' });
 export default Device;
