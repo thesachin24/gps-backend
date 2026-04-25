@@ -91,9 +91,15 @@ const inferDeviceId = (parsed, rawMessage, socket) => {
   return `tcp_${remoteAddress}_${remotePort}`;
 };
 
-const getBridgeTopic = deviceId => {
+const getBridgeTopic = (deviceId, channel) => {
+  // <env>/<product>/<version>/<device_id>/<channel></channel>
+  const TOPICS = {
+    location: `${process.env.NODE_ENV}/gps/v1/${deviceId}/location`,
+    heartbeat: `${process.env.NODE_ENV}/gps/v1/${deviceId}/heartbeat`,
+    // info: `prod/gps/v1/${deviceId}/info`
+  };
   // const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
-  return `gps/${deviceId}/data`;
+  return TOPICS[channel];
   // const TOPIC = process.env.SIM_MQTT_TOPIC || process.env.GPS_SIM_TOPIC || `gps/${deviceId}/data`;
   // return `gps/delhi-sim-001/data`;
 };
@@ -140,7 +146,7 @@ class GpsTcpListener {
     if (parsed?.protocol === 'gps_lbs') {
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed);
-      publishGpsToMqtt(getBridgeTopic(deviceId), payload);
+      publishGpsToMqtt(getBridgeTopic(deviceId, 'location') , payload);
       
       // Save GPS location to database
       void saveGpsLocation({
