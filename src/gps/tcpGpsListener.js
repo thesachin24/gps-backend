@@ -93,9 +93,9 @@ const inferDeviceId = (parsed, rawMessage, socket) => {
 
 const getBridgeTopic = deviceId => {
   // const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
-  // return `${prefix}/${deviceId}/data`;
+  return `gps/${deviceId}/data`;
   // const TOPIC = process.env.SIM_MQTT_TOPIC || process.env.GPS_SIM_TOPIC || `gps/${deviceId}/data`;
-  return `gps/delhi-sim-001/data`;
+  // return `gps/delhi-sim-001/data`;
 };
 
 const buildBridgePayload = (deviceId, parsed) => ({
