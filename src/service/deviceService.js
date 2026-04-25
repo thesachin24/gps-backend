@@ -202,7 +202,7 @@ export const deleteDevices = async (id, user_id) => {
 
 
 export const getAllDeviceLocationListData = async payload => {
-  let { page, limit, sortByRecordedAt, search } = payload;
+  let { id, page, limit, sortByRecordedAt, search } = payload;
   page = +page || OFFSET;
   limit = +limit || PAGE_LIMIT;
 
@@ -210,8 +210,8 @@ export const getAllDeviceLocationListData = async payload => {
   if (payload.user_id) {
     filter.user_id = Number(payload.user_id);
   }
-  if (payload.device_id) {
-    filter.device_id = String(payload.device_id).trim();
+  if (id) {
+    filter.device_id = id;
   }
   if (payload.device_type) {
     filter.device_type = String(payload.device_type).trim();

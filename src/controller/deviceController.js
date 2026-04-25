@@ -97,9 +97,9 @@ export const deleteDevice = async (req, res) => {
 };
 
 export const getAllDeviceLocationList = async (req, res) => {
-  const { query } = req;
+  const { params: { id }, query } = req;
   try {
-    const response = await getAllDeviceLocationListData(query);
+    const response = await getAllDeviceLocationListData({ id, ...query });
     return res.status(OK).json(response);
   } catch (err) {
     logger.error(err);
