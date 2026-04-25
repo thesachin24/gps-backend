@@ -6,7 +6,8 @@ const mqtt = require('mqtt');
 // Reuse app MQTT config by default; only topic can be overridden.
 const BROKER_URL = process.env.GPS_MQTT_URL || process.env.SIM_MQTT_URL || 'mqtt://127.0.0.1:1883';
 const DEVICE_ID = process.env.SIM_DEVICE_ID || 'delhi-sim-001';
-const TOPIC = process.env.SIM_MQTT_TOPIC || process.env.GPS_SIM_TOPIC || `gps/${DEVICE_ID}/data`;
+// const TOPIC = process.env.SIM_MQTT_TOPIC || process.env.GPS_SIM_TOPIC || `gps/${DEVICE_ID}/data`;
+const TOPIC = `${process.env.NODE_ENV}/gps/v1/${DEVICE_ID}/location`;
 const INTERVAL_MS = Number(process.env.SIM_PUBLISH_INTERVAL_MS || 5000);
 const QOS = Number(process.env.SIM_MQTT_QOS || 1);
 const USERNAME = process.env.GPS_MQTT_USERNAME || process.env.SIM_MQTT_USERNAME || undefined;
