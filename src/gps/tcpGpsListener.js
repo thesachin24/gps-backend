@@ -143,7 +143,7 @@ class GpsTcpListener {
     logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event, null, 2)}`);
     // publishGpsToMqtt(getBridgeTopic(deviceId), buildBridgePayload(deviceId, parsed));
 
-    if (parsed?.protocol === 'gps_lbs') {
+    if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended') {
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed);
       publishGpsToMqtt(getBridgeTopic(deviceId, 'location') , payload);
