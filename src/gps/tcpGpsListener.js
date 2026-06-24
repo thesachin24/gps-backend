@@ -153,7 +153,7 @@ class GpsTcpListener {
         deviceId,
         parsed,
         transport: 'tcp',
-        source: 'gps_lbs',
+        source: parsed?.protocol === 'gps_lbs' ? 'gps_lbs' : 'gps_lbs_extended',
         metadata: parsed
       });
     }
