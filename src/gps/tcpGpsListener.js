@@ -211,7 +211,7 @@ class GpsTcpListener {
             socket.write(ack);
         
             console.log('LOGIN ACK SENT:', ack.toString('hex'));
-        
+          }
           socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
           // Safety guard for malformed noisy streams.
