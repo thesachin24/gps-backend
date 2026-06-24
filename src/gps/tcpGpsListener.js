@@ -189,6 +189,7 @@ class GpsTcpListener {
 
       socket.on('data', chunk => {
         try {
+          console.log('RAW HEX:', chunk.toString('hex'));
           socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
           // Safety guard for malformed noisy streams.
