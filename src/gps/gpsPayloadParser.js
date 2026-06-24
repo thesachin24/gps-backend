@@ -501,6 +501,7 @@ const parseGt06Payload = rawBuffer => {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x12 || protocolNo === 0x22) {
     const gps = decodeGt06GpsLbs(infoBuffer);
+    console.log('GPS:-------->', gps);
     if (gps) {
       parsed.latitude = gps.latitude;
       parsed.longitude = gps.longitude;
