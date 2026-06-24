@@ -499,7 +499,7 @@ const parseGt06Payload = rawBuffer => {
       parsed.heartbeatHex = infoBuffer.toString('hex');
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
-  } else if (protocolNo === 0x12) {
+  } else if (protocolNo === 0x12 || protocolNo === 0x22) {
     const gps = decodeGt06GpsLbs(infoBuffer);
     if (gps) {
       parsed.latitude = gps.latitude;
