@@ -189,7 +189,29 @@ class GpsTcpListener {
 
       socket.on('data', chunk => {
         try {
-          console.log('RAW HEX:', chunk.toString('hex'));
+          const hex = chunk.toString('hex');
+
+          console.log('RAW HEX:', hex);
+        
+          // Login packet
+          if (hex.startsWith('7878') && hex.substr(6, 2) === '01') {
+            console.log('LOGIN PACKET RECEIVED');
+        
+            // Serial number (2 bytes before CRC)
+            const serial = hex.substring(hex.length - 12, hex.length - 8);
+        
+            console.log('Serial:', serial);
+        
+            // Temporary ACK
+            const ack = Buffer.from(
+              `78780501${serial}d9dc0d0a`,
+              'hex'
+            );
+        
+            socket.write(ack);
+        
+            console.log('LOGIN ACK SENT:', ack.toString('hex'));
+        
           socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
           // Safety guard for malformed noisy streams.
