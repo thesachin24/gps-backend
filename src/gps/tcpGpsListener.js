@@ -158,9 +158,9 @@ class GpsTcpListener {
       });
     }
 
-    console.log('PARSED:----------->', parsed);
+    // console.log('PARSED:----------->', parsed);
     if (parsed?.protocol === 'heartbeat') {
-      console.log('HEARTBEAT RECEIVED:', parsed);
+      // console.log('HEARTBEAT RECEIVED:', parsed);
       void saveHeartbeat({ deviceId, parsed });
     }
 

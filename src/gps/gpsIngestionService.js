@@ -35,6 +35,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       ...parsed.heartbeat,
       received_at: new Date().toISOString()
     };
+    console.log('HEARTBEAT DATA:----------->', heartbeatData);
     await updateDeviceState(device, {
       heartbeat: heartbeatData,
       updated_at: new Date()
