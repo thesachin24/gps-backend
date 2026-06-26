@@ -182,7 +182,7 @@ export const deleteDevices = async (id, user_id) => {
   if (!device) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
-  if (user_id && device.user_id !== user_id) {
+  if (user_id && device.owner_id !== user_id) {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
   }
 
@@ -208,7 +208,7 @@ export const getAllDeviceLocationListData = async payload => {
 
   let filter = {};
   if (payload.user_id) {
-    filter.user_id = Number(payload.user_id);
+    filter.owner_id = Number(payload.user_id);
   }
   if (id) {
     filter.device_id = id;
