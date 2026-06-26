@@ -19,7 +19,7 @@ import {
   deleteDevice
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
-import { createDeviceState, getDeviceLocationList, getTelemetryList } from '../dao';
+import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getTelemetryList } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -187,6 +187,11 @@ export const deleteDevices = async (id, user_id) => {
   }
 
   try {
+    // Delete device state
+    await deleteDeviceState({ device_id: id });
+    // Delete device asset map
+    await deleteDeviceAssetMap({ device_id: id });
+    // Delete device
     await deleteDevice({ id });
     return {
       message: MESSAGE_CONSTANTS.SUCCESS
