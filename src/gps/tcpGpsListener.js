@@ -2,7 +2,8 @@ import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
-import { saveGpsLocation, saveHeartbeat } from './gpsIngestionService';
+import { saveGpsLocation, saveHeartbeat, handleCommandResponse } from './gpsIngestionService';
+import { registerSocket, unregisterSocket } from './socketRegistry';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -127,6 +128,12 @@ class GpsTcpListener {
     }
 
     const deviceId = inferDeviceId(parsed, rawMessage, socket);
+
+    // Register socket the first time we know the device ID
+    if (deviceId && !deviceId.startsWith('tcp_')) {
+      registerSocket(deviceId, socket);
+    }
+
     const rawPayload = Buffer.isBuffer(rawMessage) ? rawMessage.toString('hex') : String(rawMessage);
     const event = {
       transport: 'tcp',
@@ -162,6 +169,10 @@ class GpsTcpListener {
     if (parsed?.protocol === 'heartbeat') {
       // console.log('HEARTBEAT RECEIVED:', parsed);
       void saveHeartbeat({ deviceId, parsed });
+    }
+
+    if (parsed?.commandResponse) {
+      void handleCommandResponse({ deviceId, parsed });
     }
 
     if (parsed?.ackHex) {
@@ -238,6 +249,9 @@ class GpsTcpListener {
 
       socket.on('close', () => {
         logger.info(`GPS TCP client disconnected: ${remote}`);
+        if (socket._gpsDeviceId) {
+          unregisterSocket(socket._gpsDeviceId);
+        }
       });
     });
 

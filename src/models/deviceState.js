@@ -28,6 +28,25 @@ const DeviceState = sequelize.define(
       allowNull: true,
       type: Sequelize.FLOAT,
     },
+    heading: {
+      allowNull: true,
+      type: Sequelize.FLOAT,
+    },
+    ignition: {
+      allowNull: true,
+      type: Sequelize.BOOLEAN,
+      comment: 'ACC/ignition state from heartbeat terminalInfo bit 1'
+    },
+    relay_status: {
+      allowNull: true,
+      type: Sequelize.BOOLEAN,
+      comment: 'Relay/immobilizer state from heartbeat terminalInfo bit 0 (armed)'
+    },
+    heartbeat: {
+      allowNull: true,
+      type: Sequelize.JSONB,
+      comment: 'Latest decoded heartbeat packet'
+    },
     metadata: {
       allowNull: true,
       type: Sequelize.JSONB,

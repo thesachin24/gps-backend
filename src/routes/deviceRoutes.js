@@ -10,6 +10,12 @@ import {
   getDeviceTrips,
   updateDevice
 } from '../controller';
+import {
+  sendCommand,
+  getCommandList,
+  getCommandDetail,
+  getDeviceOnlineStatus
+} from '../controller/deviceCommandController';
 import { device } from '../validations';
 
 const deviceRoutes = express.Router({ mergeParams: true });
@@ -139,5 +145,53 @@ deviceRoutes.delete(
   catchValidationErrors,
   deleteDevice
 );
+
+/**
+ * @swagger
+ * /devices/{id}/online:
+ *   get:
+ *     description: Check if device has an active TCP connection
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/online', authenticate, getDeviceOnlineStatus);
+
+/**
+ * @swagger
+ * /devices/{id}/commands:
+ *   post:
+ *     description: Send a command to the device (e.g. RELAY,1 to cut engine)
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.post('/:id/commands', authenticate, sendCommand);
+
+/**
+ * @swagger
+ * /devices/{id}/commands:
+ *   get:
+ *     description: List all commands sent to the device
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/commands', authenticate, getCommandList);
+
+/**
+ * @swagger
+ * /devices/{id}/commands/{commandId}:
+ *   get:
+ *     description: Get a specific command and its acknowledgement status
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/commands/:commandId', authenticate, getCommandDetail);
 
 export default deviceRoutes;

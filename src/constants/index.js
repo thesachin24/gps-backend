@@ -5,3 +5,4 @@ export * from './constant';
 export * from './field';
 export * from './numeric';
 export * from './business';
+export * from './deviceCommand';

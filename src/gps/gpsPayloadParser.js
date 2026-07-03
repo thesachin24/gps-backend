@@ -401,6 +401,52 @@ const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
   return Buffer.from([...startBytes, ...body, crcHi, crcLo, 0x0d, 0x0a]).toString('hex');
 };
 
+/**
+ * Build a GT06 server-to-device command packet (protocol 0x80).
+ * Packet layout (7878 frame):
+ *   78 78 [length] 80 [serverFlag:4] [cmdLen:1] [cmd bytes] [serial:2] [crc:2] 0D 0A
+ *
+ * @param {string} command   ASCII command string e.g. "RELAY,1"
+ * @param {number} serial    2-byte serial number (0–65535)
+ * @param {Buffer} [serverFlag]  4-byte server flag; defaults to serial padded to 4 bytes
+ * @returns {{ hex: string, serverFlagHex: string }}
+ */
+export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null) => {
+  const cmdBuf = Buffer.from(String(command), 'ascii');
+  const cmdLen = cmdBuf.length;
+  const flag = serverFlag || Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
+
+  // length byte = protocol(1) + serverFlag(4) + cmdLen_byte(1) + cmd(N) + serial(2) + crc(2)
+  const lengthByte = 1 + 4 + 1 + cmdLen + 2 + 2;
+  const serialHi = (serial >> 8) & 0xff;
+  const serialLo = serial & 0xff;
+
+  const bodyForCrc = Buffer.concat([
+    Buffer.from([lengthByte, 0x80]),
+    flag,
+    Buffer.from([cmdLen]),
+    cmdBuf,
+    Buffer.from([serialHi, serialLo])
+  ]);
+
+  const crc = crc16Itu(bodyForCrc);
+  const crcHi = (crc >> 8) & 0xff;
+  const crcLo = crc & 0xff;
+
+  const packet = Buffer.concat([
+    Buffer.from([0x78, 0x78]),
+    bodyForCrc,
+    Buffer.from([crcHi, crcLo, 0x0d, 0x0a])
+  ]);
+
+  return {
+    hex: packet.toString('hex'),
+    buffer: packet,
+    serverFlagHex: flag.toString('hex'),
+    serial
+  };
+};
+
 const parseGt06Payload = rawBuffer => {
   if (!Buffer.isBuffer(rawBuffer) || rawBuffer.length < 10) {
     return null;
@@ -519,6 +565,25 @@ const parseGt06Payload = rawBuffer => {
       parsed.lbs = gps.lbs;
       parsed.type = 'gps_fix';
     }
+  } else if (protocolNo === 0x17) {
+    // Command response from device: echoes server_flag + content
+    if (infoBuffer.length >= 5) {
+      const serverFlag = infoBuffer.subarray(0, 4).toString('hex');
+      const contentLength = infoBuffer[4];
+      const content =
+        infoBuffer.length >= 5 + contentLength
+          ? infoBuffer.subarray(5, 5 + contentLength).toString('ascii').trim()
+          : '';
+      parsed.commandResponse = {
+        serverFlag,
+        contentLength,
+        content,
+        raw: infoBuffer.toString('hex')
+      };
+    } else {
+      parsed.commandResponse = { raw: infoBuffer.toString('hex') };
+    }
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x94) {
     const information = decodeGt06InfoTransmission(infoBuffer);
     console.log('Else if Information:-------->', information);
@@ -526,7 +591,7 @@ const parseGt06Payload = rawBuffer => {
     //   messageKind: 'device_information_report',
     //   ...(information || {})
     // };
-  }else {
+  } else {
     console.log('Else:-------->', protocolNo, infoBuffer.toString('hex'));
     parsed.type = 'unknown';
     console.log('Parsed:-------->', parsed);

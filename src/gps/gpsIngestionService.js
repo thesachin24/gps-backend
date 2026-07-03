@@ -2,6 +2,7 @@ import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
 import { getDevice, updateDevice } from '../dao/deviceDao';
 import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
+import { acknowledgeDeviceCommandByFlag } from '../dao/deviceCommandDao';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -36,11 +37,22 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       received_at: new Date().toISOString()
     };
     console.log('HEARTBEAT DATA:----------->', heartbeatData);
-    await updateDeviceState(device, {
+
+    // Extract relay_status and ignition from terminalInfo bits
+    const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
+    const ignitionOn = parsed.heartbeat?.terminalInfoDecoded?.ignitionOn ?? null;
+
+    let deviceState = await getDeviceState({ device_id: device.id });
+    if (!deviceState) {
+      deviceState = await createDeviceState({ device_id: device.id });
+    }
+    await updateDeviceState(deviceState, {
       heartbeat: heartbeatData,
+      relay_status: relayStatus,
+      ignition: ignitionOn,
       updated_at: new Date()
     });
-    logger.info(`Heartbeat persist success: deviceId=${deviceId}`);
+    logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn}`);
     return heartbeatData;
   } catch (error) {
     logger.error(`Failed to persist heartbeat for ${deviceId}: ${error.message}`);
@@ -117,6 +129,29 @@ export const saveGpsLocation = async ({
     return telemetryData;
   } catch (error) {
     logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(telemetryPayload)}`);
+    return null;
+  }
+};
+
+/**
+ * Handle a GT06 command response (protocol 0x17).
+ * Matches the response back to a pending `device_commands` row via server_flag.
+ */
+export const handleCommandResponse = async ({ deviceId, parsed }) => {
+  const { serverFlag, content } = parsed?.commandResponse || {};
+  if (!deviceId || !serverFlag) {
+    return null;
+  }
+  try {
+    const record = await acknowledgeDeviceCommandByFlag(deviceId, serverFlag, content || '');
+    if (record) {
+      logger.info(`Command ack: deviceId=${deviceId} flag=${serverFlag} response="${content}"`);
+    } else {
+      logger.info(`Command ack: no pending command found for deviceId=${deviceId} flag=${serverFlag}`);
+    }
+    return record;
+  } catch (error) {
+    logger.error(`Failed to ack command for ${deviceId}: ${error.message}`);
     return null;
   }
 };
