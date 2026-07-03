@@ -2,7 +2,7 @@ import logger from '../config/logger';
 import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, FORBIDDEN, UN_PROCESSABLE_ENTITY, OFFSET, PAGE_LIMIT } from '../constants';
 import { COMMAND_ALIASES, COMMAND_STATUS } from '../constants/deviceCommand';
 import { getDevice } from '../dao/deviceDao';
-import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand } from '../dao/deviceCommandDao';
+import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand, getLastAcknowledgedRelayCommand } from '../dao/deviceCommandDao';
 import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
 import { getSocket } from '../gps/socketRegistry';
 import { CustomError } from '../utils';
@@ -117,10 +117,76 @@ export const listDeviceCommands = async ({ deviceDbId, page, limit }) => {
   }
 };
 
+/**
+ * Called when your app sends RELAY via SMS.
+ * Logs the intent immediately (status = sent) and records the relay state
+ * in device_state so GET /relay-status reflects it before the 0x16 alarm arrives.
+ */
+export const logSmsRelay = async ({ deviceDbId, deviceStringId, relayOn, note, userId }) => {
+  if (typeof relayOn !== 'boolean') {
+    throw new CustomError(UN_PROCESSABLE_ENTITY, 'relay_on must be a boolean (true = cut engine, false = restore).');
+  }
+
+  const device = await getDevice({ id: deviceDbId, is_active: true });
+  if (!device) throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
+  if (userId && device.owner_id !== userId) throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
+
+  const command = relayOn ? 'RELAY,1' : 'RELAY,0';
+
+  const record = await createDeviceCommand({
+    device_id: deviceDbId,
+    device_string_id: deviceStringId,
+    command,
+    status: COMMAND_STATUS.SENT,
+    server_flag: null,
+    serial: null,
+    response: note || 'sent_via_sms',
+    sent_at: new Date()
+  });
+
+  logger.info(`SMS relay logged: deviceId=${deviceStringId} relay_on=${relayOn}`);
+
+  return {
+    message: MESSAGE_CONSTANTS.SUCCESS,
+    data: {
+      id: record.id,
+      command,
+      relay_on: relayOn,
+      status: COMMAND_STATUS.SENT,
+      note: note || null
+    }
+  };
+};
+
 export const getDeviceCommandDetail = async ({ commandId, deviceDbId }) => {
   const record = await getDeviceCommand({ id: commandId, device_id: deviceDbId });
   if (!record) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
   return { message: MESSAGE_CONSTANTS.SUCCESS, data: record };
+};
+
+/**
+ * Derive the relay state from the last acknowledged RELAY command.
+ * More reliable than reading the heartbeat terminalInfo `armed` bit because
+ * most GT06 devices don't reflect the relay output state in heartbeats.
+ *
+ * Returns:
+ *   { relay_on: true }  — last acked command was RELAY,1
+ *   { relay_on: false } — last acked command was RELAY,0
+ *   { relay_on: null }  — no acknowledged relay command on record
+ */
+export const getRelayStatus = async ({ deviceDbId, deviceStringId }) => {
+  const record = await getLastAcknowledgedRelayCommand(deviceStringId);
+  const relayOn = record ? record.command === 'RELAY,1' : null;
+  return {
+    message: MESSAGE_CONSTANTS.SUCCESS,
+    data: {
+      relay_on: relayOn,
+      source: record ? 'last_acked_command' : 'no_data',
+      command: record?.command ?? null,
+      acked_at: record?.acked_at ?? null,
+      response: record?.response ?? null
+    }
+  };
 };

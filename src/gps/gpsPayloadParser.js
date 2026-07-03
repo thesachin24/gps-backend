@@ -192,6 +192,67 @@ const decodeHeartbeatAlarm = code => {
   return map[code] || 'unknown';
 };
 
+/**
+ * Decode GT06 alarm packet (protocol 0x16).
+ * Layout identical to GPS+LBS (18+ bytes) followed by:
+ *   Byte 18: terminalInfo
+ *   Byte 19: voltageLevel
+ *   Byte 20: gsmSignalStrength
+ *   Byte 21: alarmStatus  ← this is the key byte
+ *   Byte 22: language
+ *
+ * alarmStatus values (common across GT06 variants):
+ *   0x00 normal / relay released
+ *   0x01 shock
+ *   0x02 power cut
+ *   0x03 low battery
+ *   0x04 SOS
+ *   0x09 armed    (RELAY,1 executed — relay on / engine cut)
+ *   0x0A disarmed (RELAY,0 executed — relay off / engine restored)
+ */
+const decodeAlarmStatus = code => {
+  const map = {
+    0x00: 'normal',
+    0x01: 'shock',
+    0x02: 'power_cut',
+    0x03: 'low_battery',
+    0x04: 'sos',
+    0x06: 'geofence_in',
+    0x07: 'geofence_out',
+    0x09: 'armed',
+    0x0a: 'disarmed',
+    0x0b: 'overspeed',
+    0x0c: 'removal'
+  };
+  return map[code] || `unknown_0x${code.toString(16).padStart(2, '0')}`;
+};
+
+const decodeGt06Alarm = infoBuffer => {
+  if (!infoBuffer || infoBuffer.length < 22) {
+    return null;
+  }
+  const gps = decodeGt06GpsLbs(infoBuffer.subarray(0, Math.min(infoBuffer.length, 26)));
+  const terminalInfo = infoBuffer[18];
+  const voltageLevel = infoBuffer[19];
+  const gsmSignalStrength = infoBuffer[20];
+  const alarmStatus = infoBuffer[21];
+  const alarmName = decodeAlarmStatus(alarmStatus);
+
+  return {
+    gps: gps || null,
+    terminalInfo,
+    terminalInfoDecoded: decodeHeartbeatTerminalInfo(terminalInfo),
+    voltageLevel,
+    batteryLevel: decodeBatteryLevel(voltageLevel),
+    gsmSignalStrength,
+    gsmSignal: decodeGsmSignal(gsmSignalStrength),
+    alarmStatus,
+    alarmName,
+    // Convenience flag: true = relay is ON (engine cut), false = relay is OFF
+    relayOn: alarmStatus === 0x09 ? true : alarmStatus === 0x0a ? false : null
+  };
+};
+
 const toHexByte = value => value.toString(16).padStart(2, '0');
 
 const decodeInformationTypeName = infoType => {
@@ -565,8 +626,24 @@ const parseGt06Payload = rawBuffer => {
       parsed.lbs = gps.lbs;
       parsed.type = 'gps_fix';
     }
+  } else if (protocolNo === 0x16) {
+    const alarm = decodeGt06Alarm(infoBuffer);
+    if (alarm) {
+      parsed.alarm = alarm;
+      if (alarm.relayOn !== null) {
+        parsed.relayOn = alarm.relayOn;
+        parsed.type = 'relay_event';
+      }
+      if (alarm.gps?.latitude && alarm.gps?.longitude) {
+        parsed.latitude = alarm.gps.latitude;
+        parsed.longitude = alarm.gps.longitude;
+        parsed.speed = alarm.gps.speed;
+        parsed.heading = alarm.gps.heading;
+        parsed.timestamp = alarm.gps.timestamp;
+      }
+    }
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x17) {
-    // Command response from device: echoes server_flag + content
     if (infoBuffer.length >= 5) {
       const serverFlag = infoBuffer.subarray(0, 4).toString('hex');
       const contentLength = infoBuffer[4];

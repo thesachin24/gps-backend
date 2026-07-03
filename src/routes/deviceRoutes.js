@@ -14,9 +14,10 @@ import {
   sendCommand,
   getCommandList,
   getCommandDetail,
-  getDeviceOnlineStatus
-} from '../controller/deviceCommandController';
-import { device } from '../validations';
+  getDeviceOnlineStatus,
+  getRelayStatusHandler,
+  logSmsRelayEvent
+} from '../controller/deviceCommandController';import { device } from '../validations';
 
 const deviceRoutes = express.Router({ mergeParams: true });
 
@@ -160,6 +161,18 @@ deviceRoutes.get('/:id/online', authenticate, getDeviceOnlineStatus);
 
 /**
  * @swagger
+ * /devices/{id}/relay-status:
+ *   get:
+ *     description: Get the current relay/immobilizer state derived from the last acknowledged RELAY command
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/relay-status', authenticate, getRelayStatusHandler);
+
+/**
+ * @swagger
  * /devices/{id}/commands:
  *   post:
  *     description: Send a command to the device (e.g. RELAY,1 to cut engine)
@@ -169,6 +182,18 @@ deviceRoutes.get('/:id/online', authenticate, getDeviceOnlineStatus);
  *       - Device
  */
 deviceRoutes.post('/:id/commands', authenticate, sendCommand);
+
+/**
+ * @swagger
+ * /devices/{id}/relay-events:
+ *   post:
+ *     description: Manually log a relay command sent via SMS (so the backend tracks it)
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.post('/:id/relay-events', authenticate, logSmsRelayEvent);
 
 /**
  * @swagger

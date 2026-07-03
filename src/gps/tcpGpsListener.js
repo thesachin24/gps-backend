@@ -2,7 +2,7 @@ import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
-import { saveGpsLocation, saveHeartbeat, handleCommandResponse } from './gpsIngestionService';
+import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
 
 const toBoolean = value => {
@@ -173,6 +173,10 @@ class GpsTcpListener {
 
     if (parsed?.commandResponse) {
       void handleCommandResponse({ deviceId, parsed });
+    }
+
+    if (parsed?.type === 'relay_event') {
+      void handleRelayEvent({ deviceId, parsed });
     }
 
     if (parsed?.ackHex) {

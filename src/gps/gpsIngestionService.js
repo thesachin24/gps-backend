@@ -2,7 +2,7 @@ import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
 import { getDevice, updateDevice } from '../dao/deviceDao';
 import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
-import { acknowledgeDeviceCommandByFlag } from '../dao/deviceCommandDao';
+import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -129,6 +129,55 @@ export const saveGpsLocation = async ({
     return telemetryData;
   } catch (error) {
     logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(telemetryPayload)}`);
+    return null;
+  }
+};
+
+/**
+ * Handle a GT06 alarm packet (protocol 0x16) that carries a relay arm/disarm event.
+ * This fires when RELAY,1 or RELAY,0 was sent via SMS (not via TCP).
+ * Updates device_state.relay_status and logs a synthetic entry in device_commands.
+ */
+export const handleRelayEvent = async ({ deviceId, parsed }) => {
+  if (!deviceId || parsed?.relayOn === undefined || parsed?.relayOn === null) {
+    return null;
+  }
+
+  const device = await getDevice({ device_id: deviceId, is_active: true });
+  if (!device) {
+    logger.info(`Relay event skipped: device not mapped for ${deviceId}`);
+    return null;
+  }
+
+  try {
+    let deviceState = await getDeviceState({ device_id: device.id });
+    if (!deviceState) {
+      deviceState = await createDeviceState({ device_id: device.id });
+    }
+
+    await updateDeviceState(deviceState, {
+      relay_status: parsed.relayOn,
+      updated_at: new Date()
+    });
+
+    // Log a synthetic device_commands entry so the command history is complete
+    await createDeviceCommand({
+      device_id: device.id,
+      device_string_id: deviceId,
+      command: parsed.relayOn ? 'RELAY,1' : 'RELAY,0',
+      status: 'acknowledged',
+      server_flag: null,
+      serial: null,
+      response: parsed.alarm?.alarmName || (parsed.relayOn ? 'armed' : 'disarmed'),
+      sent_at: new Date(),
+      acked_at: new Date(),
+      error: null
+    });
+
+    logger.info(`Relay event (SMS): deviceId=${deviceId} relay_on=${parsed.relayOn} alarm=${parsed.alarm?.alarmName}`);
+    return parsed.relayOn;
+  } catch (error) {
+    logger.error(`Failed to handle relay event for ${deviceId}: ${error.message}`);
     return null;
   }
 };
