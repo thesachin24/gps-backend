@@ -7,7 +7,9 @@
 /** Human-friendly aliases resolved by deviceCommandService before dispatch */
 export const COMMAND_ALIASES = Object.freeze({
   RELAY_ON: 'relay_on',
-  RELAY_OFF: 'relay_off'
+  RELAY_OFF: 'relay_off',
+  STATUS: 'status',
+  PARAM: 'param'
 });
 
 /**
@@ -18,6 +20,10 @@ export const RAW_COMMANDS = Object.freeze({
   // Relay / immobilizer
   RELAY_ON: 'RELAY,1',
   RELAY_OFF: 'RELAY,0',
+
+  // Query current device status (returns terminalInfo + relay state on many devices)
+  CHECK: 'CHECK',
+  PARAM: 'PARAM',
 
   // Server time sync request
   TIME_SYNC: 'TIME',
@@ -49,3 +55,30 @@ export const COMMAND_STATUS = Object.freeze({
   ACKNOWLEDGED: 'acknowledged',
   FAILED: 'failed'
 });
+
+/**
+ * Command response strings that indicate relay is ON (engine cut).
+ * Different firmware versions return slightly different strings.
+ */
+export const RELAY_ON_RESPONSES = Object.freeze([
+  'relay,1',
+  'relay on',
+  'relay open',
+  'armed',
+  'cut off',
+  'acc off',
+  'oil cut'
+]);
+
+/**
+ * Command response strings that indicate relay is OFF (engine restored).
+ */
+export const RELAY_OFF_RESPONSES = Object.freeze([
+  'relay,0',
+  'relay off',
+  'relay close',
+  'disarmed',
+  'resume',
+  'acc on',
+  'oil resume'
+]);

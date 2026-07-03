@@ -3,6 +3,7 @@ import { createDeviceLocation } from '../dao/deviceLocationDao';
 import { getDevice, updateDevice } from '../dao/deviceDao';
 import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
+import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -185,6 +186,7 @@ export const handleRelayEvent = async ({ deviceId, parsed }) => {
 /**
  * Handle a GT06 command response (protocol 0x17).
  * Matches the response back to a pending `device_commands` row via server_flag.
+ * Also detects relay state from the response content and updates device_state.
  */
 export const handleCommandResponse = async ({ deviceId, parsed }) => {
   const { serverFlag, content } = parsed?.commandResponse || {};
@@ -198,6 +200,29 @@ export const handleCommandResponse = async ({ deviceId, parsed }) => {
     } else {
       logger.info(`Command ack: no pending command found for deviceId=${deviceId} flag=${serverFlag}`);
     }
+
+    // Detect relay state from the response text and sync device_state
+    if (content) {
+      const lower = content.toLowerCase();
+      const isRelayOn = RELAY_ON_RESPONSES.some(r => lower.includes(r));
+      const isRelayOff = RELAY_OFF_RESPONSES.some(r => lower.includes(r));
+
+      if (isRelayOn || isRelayOff) {
+        const device = await getDevice({ device_id: deviceId, is_active: true });
+        if (device) {
+          let deviceState = await getDeviceState({ device_id: device.id });
+          if (!deviceState) {
+            deviceState = await createDeviceState({ device_id: device.id });
+          }
+          await updateDeviceState(deviceState, {
+            relay_status: isRelayOn,
+            updated_at: new Date()
+          });
+          logger.info(`Relay state updated from 0x17 response: deviceId=${deviceId} relay_on=${isRelayOn}`);
+        }
+      }
+    }
+
     return record;
   } catch (error) {
     logger.error(`Failed to ack command for ${deviceId}: ${error.message}`);
