@@ -521,10 +521,15 @@ const parseGt06Payload = rawBuffer => {
     }
   } else if (protocolNo === 0x94) {
     const information = decodeGt06InfoTransmission(infoBuffer);
+    console.log('Else if Information:-------->', information);
     // parsed.information = {
     //   messageKind: 'device_information_report',
     //   ...(information || {})
     // };
+  }else {
+    console.log('Else:-------->', protocolNo, infoBuffer.toString('hex'));
+    parsed.type = 'unknown';
+    console.log('Parsed:-------->', parsed);
   }
 
   return parsed;
