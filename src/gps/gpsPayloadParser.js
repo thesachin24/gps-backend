@@ -526,6 +526,7 @@ const decodeGt06StatusExtended = infoBuffer => {
 };
 
 const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
+  const serialHi = (serialNo >> 8) & 0xff;
   const serialLo = serialNo & 0xff;
   const body = Buffer.from([0x05, protocolNo, serialHi, serialLo]); // length + protocol + serial
   const crc = crc16Itu(body);
