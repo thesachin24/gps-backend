@@ -73,8 +73,10 @@ const decodePacket = buf => {
   if (buf.length < 10) return { raw: buf.toString('hex'), note: 'too short' };
   const proto = buf[3];
   const name = PROTOCOL_NAMES[proto] || `UNKNOWN_0x${proto.toString(16)}`;
+  const packetLen = buf[2]; // length field = protocol + info + serial(2) + crc(2)
+  const infoLen = packetLen - 5;
   const infoStart = 4;
-  const infoEnd = buf.length - 4;
+  const infoEnd = infoStart + infoLen;
   const info = buf.subarray(infoStart, infoEnd);
   const serial = buf.readUInt16BE(infoEnd);
 

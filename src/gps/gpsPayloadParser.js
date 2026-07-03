@@ -155,6 +155,11 @@ const crc16Itu = bytes => {
 };
 
 const decodeBatteryLevel = level => {
+  // Standard GT06 uses 0-6 enum. Some devices send raw ADC (0-255).
+  // Detect raw ADC when value > 6 and convert to percentage.
+  if (level > 6) {
+    return `raw_adc_${level} (~${Math.round((level / 255) * 100)}%)`;
+  }
   const map = {
     0: 'unknown',
     1: 'very_low',
