@@ -2,7 +2,7 @@ import net from 'net';
 import logger from '../config/logger';
 import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
-import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent } from './gpsIngestionService';
+import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
 
 const toBoolean = value => {
@@ -150,7 +150,7 @@ class GpsTcpListener {
     logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event, null, 2)}`);
     // publishGpsToMqtt(getBridgeTopic(deviceId), buildBridgePayload(deviceId, parsed));
 
-    if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended') {
+    if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed);
       publishGpsToMqtt(getBridgeTopic(deviceId, 'location') , payload);
@@ -177,6 +177,10 @@ class GpsTcpListener {
 
     if (parsed?.type === 'relay_event') {
       void handleRelayEvent({ deviceId, parsed });
+    }
+
+    if (parsed?.deviceStatus) {
+      void handleDeviceStatus({ deviceId, parsed });
     }
 
     if (parsed?.ackHex) {

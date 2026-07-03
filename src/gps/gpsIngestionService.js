@@ -229,3 +229,53 @@ export const handleCommandResponse = async ({ deviceId, parsed }) => {
     return null;
   }
 };
+
+/**
+ * Handle the deviceStatus block from a 0x24 status-extended packet.
+ * Updates relay_status, ignition, battery and signal in device_state.
+ * Also creates a device_commands entry if the status confirms a relay change.
+ */
+export const handleDeviceStatus = async ({ deviceId, parsed }) => {
+  const status = parsed?.deviceStatus;
+  if (!deviceId || !status) return null;
+
+  const device = await getDevice({ device_id: deviceId, is_active: true });
+  if (!device) return null;
+
+  try {
+    let deviceState = await getDeviceState({ device_id: device.id });
+    if (!deviceState) deviceState = await createDeviceState({ device_id: device.id });
+
+    const updates = { updated_at: new Date() };
+
+    if (status.relayOn !== null && status.relayOn !== undefined) {
+      updates.relay_status = status.relayOn;
+    }
+    if (status.terminalInfoDecoded?.ignitionOn !== undefined) {
+      updates.ignition = status.terminalInfoDecoded.ignitionOn;
+    }
+
+    await updateDeviceState(deviceState, updates);
+
+    // If relay state is conclusive, log it in device_commands
+    if (status.relayOn !== null && status.relayOn !== undefined) {
+      await createDeviceCommand({
+        device_id: device.id,
+        device_string_id: deviceId,
+        command: status.relayOn ? 'RELAY,1' : 'RELAY,0',
+        status: 'acknowledged',
+        server_flag: null,
+        serial: null,
+        response: `0x24_status: ${status.alarmName || 'unknown'}`,
+        sent_at: new Date(),
+        acked_at: new Date()
+      });
+    }
+
+    logger.info(`0x24 status: deviceId=${deviceId} relay=${status.relayOn} ignition=${status.terminalInfoDecoded?.ignitionOn} alarm=${status.alarmName}`);
+    return updates;
+  } catch (error) {
+    logger.error(`handleDeviceStatus failed for ${deviceId}: ${error.message}`);
+    return null;
+  }
+};

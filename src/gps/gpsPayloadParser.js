@@ -372,6 +372,7 @@ const toProtocolName = protocolNo => {
     0x16: 'alarm',
     0x17: 'command_response',
     0x22: 'gps_lbs_extended',
+    0x24: 'gps_lbs_status',
     0x80: 'server_response',
     0x94: 'information_transmission'
   };
@@ -456,8 +457,75 @@ const decodeGt06GpsLbs = infoBuffer => {
   };
 };
 
+/**
+ * Decode protocol 0x24 — GPS+LBS+Status extended packet.
+ * Found on many GT06 clone variants. Sent after SMS commands and on status changes.
+ *
+ * Layout (info buffer):
+ *   [0-5]   DateTime (6 bytes)
+ *   [6]     GPS info byte (hi nibble = data length, lo nibble = satellite count)
+ *   [7-10]  Raw latitude  (uint32 big-endian)
+ *   [11-14] Raw longitude (uint32 big-endian)
+ *   [15]    Speed (km/h)
+ *   [16-17] Course/status flags (uint16 big-endian)
+ *   [18-25] LBS block: MCC(2), MNC(1), LAC(2), CellID(3)
+ *   [26]    Terminal info byte (same bit layout as heartbeat)
+ *   [27]    Voltage level
+ *   [28]    GSM signal
+ *   [29]    Alarm status (0x09=armed/relay_on, 0x0A=disarmed/relay_off)
+ *   [30]    Language / misc
+ *   [31+]   Device-specific extended bytes (varies by firmware)
+ */
+const decodeGt06StatusExtended = infoBuffer => {
+  if (!infoBuffer || infoBuffer.length < 18) {
+    return null;
+  }
+
+  const gps = decodeGt06GpsLbs(infoBuffer);
+
+  // Status bytes start at offset 26 (after standard GPS+LBS block)
+  const hasStatus = infoBuffer.length >= 31;
+  let terminalInfo = null;
+  let voltageLevel = null;
+  let gsmSignal = null;
+  let alarmStatus = null;
+  let relayOn = null;
+
+  if (hasStatus) {
+    terminalInfo = infoBuffer[26];
+    voltageLevel = infoBuffer[27];
+    gsmSignal = infoBuffer[28];
+    alarmStatus = infoBuffer[29];
+
+    if (alarmStatus === 0x09) relayOn = true;
+    else if (alarmStatus === 0x0a) relayOn = false;
+    // Also check terminalInfo armed bit as fallback
+    else if (relayOn === null) relayOn = (terminalInfo & 0x01) !== 0 ? true : false;
+  }
+
+  // Extended bytes beyond offset 31 — device-specific, log as hex
+  const extendedHex = infoBuffer.length > 31
+    ? infoBuffer.subarray(31).toString('hex')
+    : null;
+
+  return {
+    ...(gps || {}),
+    status: hasStatus ? {
+      terminalInfo,
+      terminalInfoDecoded: terminalInfo !== null ? decodeHeartbeatTerminalInfo(terminalInfo) : null,
+      voltageLevel,
+      batteryLevel: voltageLevel !== null ? decodeBatteryLevel(voltageLevel) : null,
+      gsmSignal,
+      gsmSignalDecoded: gsmSignal !== null ? decodeGsmSignal(gsmSignal) : null,
+      alarmStatus,
+      alarmName: alarmStatus !== null ? decodeAlarmStatus(alarmStatus) : null,
+      relayOn
+    } : null,
+    extendedHex
+  };
+};
+
 const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
-  const serialHi = (serialNo >> 8) & 0xff;
   const serialLo = serialNo & 0xff;
   const body = Buffer.from([0x05, protocolNo, serialHi, serialLo]); // length + protocol + serial
   const crc = crc16Itu(body);
@@ -631,6 +699,42 @@ const parseGt06Payload = rawBuffer => {
       parsed.lbs = gps.lbs;
       parsed.type = 'gps_fix';
     }
+  } else if (protocolNo === 0x24) {
+    const statusPkt = decodeGt06StatusExtended(infoBuffer);
+    console.log('Status Pkt:-------->', statusPkt);
+    if (statusPkt) {
+      parsed.timestamp = statusPkt.timestamp;
+      parsed.satellites = statusPkt.satellites;
+      parsed.lbs = statusPkt.lbs;
+      parsed.extendedHex = statusPkt.extendedHex;
+
+      // Only treat as GPS fix when the device actually has a satellite lock
+      if (statusPkt.courseStatusFlags?.gpsFixed && statusPkt.satellites > 0) {
+        parsed.latitude = statusPkt.latitude;
+        parsed.longitude = statusPkt.longitude;
+        parsed.speed = statusPkt.speed;
+        parsed.speedKph = statusPkt.speedKph;
+        parsed.heading = statusPkt.heading;
+        parsed.courseStatus = statusPkt.courseStatus;
+        parsed.courseStatusFlags = statusPkt.courseStatusFlags;
+        parsed.hemisphere = statusPkt.hemisphere;
+        parsed.type = 'gps_fix';
+      }
+
+      // Always carry the status block (relay, battery, signal)
+      if (statusPkt.status) {
+        parsed.deviceStatus = statusPkt.status;
+
+        // If the status block carries a definitive relay state, surface it
+        if (statusPkt.status.relayOn !== null && statusPkt.status.relayOn !== undefined) {
+          parsed.relayOn = statusPkt.status.relayOn;
+          if (parsed.type !== 'gps_fix') {
+            parsed.type = 'relay_event';
+          }
+        }
+      }
+    }
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x16) {
     const alarm = decodeGt06Alarm(infoBuffer);
     console.log('Alarm:-------->', alarm);

@@ -31,6 +31,7 @@ const PROTOCOL_NAMES = {
   0x16: 'ALARM',
   0x17: 'CMD_RESPONSE',
   0x22: 'GPS+LBS_EXT',
+  0x24: 'GPS+LBS+STATUS',
   0x80: 'SERVER_CMD',
   0x94: 'INFO_TRANSMISSION'
 };
@@ -88,6 +89,26 @@ const decodePacket = buf => {
       voltageLevel: info[1],
       gsmSignal: info[2],
       alarmByte: info[3]
+    };
+  }
+
+  if (proto === 0x24 && info.length >= 26) {
+    const ALARM_NAMES = { 0x00: 'normal', 0x01: 'shock', 0x02: 'power_cut', 0x09: 'RELAY_ON(armed)', 0x0a: 'RELAY_OFF(disarmed)' };
+    const hasStatus = info.length >= 31;
+    const satCount = info[6] & 0x0f;
+    const gpsFixed = satCount > 0;
+    decoded['0x24_gps_status'] = {
+      timestamp: `20${info[0].toString().padStart(2,'0')}-${info[1].toString().padStart(2,'0')}-${info[2].toString().padStart(2,'0')} ${info[3].toString().padStart(2,'0')}:${info[4].toString().padStart(2,'0')}:${info[5].toString().padStart(2,'0')}`,
+      satellites: satCount,
+      gpsFixed,
+      ...(hasStatus && {
+        terminalInfo: decodeTerminalInfo(info[26]),
+        voltageLevel: info[27],
+        gsmSignal: info[28],
+        alarmStatus: `0x${info[29].toString(16)} → ${ALARM_NAMES[info[29]] || 'unknown'}`,
+        relay_on: info[29] === 0x09 ? true : info[29] === 0x0a ? false : null
+      }),
+      extendedHex: info.length > 31 ? info.subarray(31).toString('hex') : null
     };
   }
 
