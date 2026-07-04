@@ -265,11 +265,40 @@ const decodeInformationTypeName = infoType => {
   return map[infoType] || 'unknown_information_type';
 };
 
+/**
+ * Decode 3GPP PLMN identifier from 3 bytes (GSM/UMTS/LTE standard).
+ * b0 = MCC d2 | MCC d1   (high nibble | low nibble)
+ * b1 = MNC d3 | MCC d3   (0xF in high nibble = 2-digit MNC)
+ * b2 = MNC d2 | MNC d1
+ */
+const decodePlmnBcd = (b0, b1, b2) => {
+  const mccD1 = b0 & 0x0f;
+  const mccD2 = (b0 >> 4) & 0x0f;
+  const mccD3 = b1 & 0x0f;
+  const mncD3raw = (b1 >> 4) & 0x0f;
+  const mncD1 = b2 & 0x0f;
+  const mncD2 = (b2 >> 4) & 0x0f;
+
+  const mcc = mccD1 * 100 + mccD2 * 10 + mccD3;
+  const mnc = mncD3raw === 0x0f
+    ? mncD1 * 10 + mncD2
+    : mncD1 * 100 + mncD2 * 10 + mncD3raw;
+
+  // Well-known Indian carrier lookup
+  const carrierMap = {
+    '404-10': 'Airtel', '404-20': 'Vi (Vodafone)', '404-71': 'BSNL',
+    '404-45': 'Airtel', '404-49': 'Airtel', '404-97': 'Aircel',
+    '405-840': 'Jio', '405-857': 'Jio', '405-869': 'Jio',
+    '405-870': 'Jio', '405-872': 'Jio', '405-875': 'Jio', '405-879': 'Jio'
+  };
+  const carrier = carrierMap[`${mcc}-${mnc}`] || null;
+
+  return { mcc, mnc, carrier, valid: mcc >= 200 && mcc <= 999 };
+};
+
 const decodeInfoTransmissionPayload = (infoType, payloadBuffer) => {
   if (!payloadBuffer || !payloadBuffer.length) {
-    return {
-      payloadLength: 0
-    };
+    return { payloadLength: 0 };
   }
 
   const payloadHex = payloadBuffer.toString('hex');
@@ -279,27 +308,38 @@ const decodeInfoTransmissionPayload = (infoType, payloadBuffer) => {
     payloadBytes: Array.from(payloadBuffer).map(toHexByte)
   };
 
-  // Type 0x0A is commonly used by GT06 variants for network/LBS assist reports.
-  // Many vendors encode repeated cell tower blocks in 9-byte groups.
+  // 0x0A — LBS / network assist report.
+  // Each cell tower record = 9 bytes:
+  //   [0-2] PLMN BCD (3GPP TS 24.008)  → MCC + MNC
+  //   [3-4] LAC  (uint16 BE)
+  //   [5-7] Cell ID (uint24 BE)
+  //   [8]   RSSI / signal strength
   if (infoType === 0x0a && payloadBuffer.length % 9 === 0) {
     const records = [];
     for (let offset = 0; offset < payloadBuffer.length; offset += 9) {
-      const mcc = payloadBuffer.readUInt16BE(offset);
-      const mnc = payloadBuffer[offset + 2];
+      const plmn = decodePlmnBcd(
+        payloadBuffer[offset],
+        payloadBuffer[offset + 1],
+        payloadBuffer[offset + 2]
+      );
       const lac = payloadBuffer.readUInt16BE(offset + 3);
       const cellId = readUInt24BE(payloadBuffer, offset + 5);
       const rssi = payloadBuffer[offset + 8];
       records.push({
         index: records.length + 1,
-        mcc,
-        mnc,
+        mcc: plmn.mcc,
+        mnc: plmn.mnc,
+        carrier: plmn.carrier,
+        plmnValid: plmn.valid,
         lac,
+        lacHex: lac.toString(16).padStart(4, '0'),
         cellId,
         cellIdHex: cellId !== null ? cellId.toString(16).padStart(6, '0') : null,
-        signalStrength: rssi
+        rssi,
+        rssiDbm: rssi > 0 ? -(256 - rssi) : null
       });
     }
-    payload.decodedAs = 'cell_tower_records_9_bytes';
+    payload.decodedAs = 'cell_tower_records_3gpp_plmn';
     payload.cellTowers = records;
   }
 
@@ -764,14 +804,23 @@ const parseGt06Payload = rawBuffer => {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x94) {
     const information = decodeGt06InfoTransmission(infoBuffer);
-    console.log('Else if Information:-------->', information);
-    // parsed.information = {
-    //   messageKind: 'device_information_report',
-    //   ...(information || {})
-    // };
+    if (information) {
+      parsed.information = {
+        messageKind: 'device_information_report',
+        ...information
+      };
+      // If LBS cell towers came through, expose as top-level for quick access
+      if (information.payload?.cellTowers?.length) {
+        parsed.cellTowers = information.payload.cellTowers;
+        parsed.type = 'lbs_report';
+      }
+    }
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else {
     console.log('Else:-------->', protocolNo, infoBuffer.toString('hex'));
     parsed.type = 'unknown';
+    parsed.rawHex = infoBuffer.toString('hex');
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
     console.log('Parsed:-------->', parsed);
   }
 

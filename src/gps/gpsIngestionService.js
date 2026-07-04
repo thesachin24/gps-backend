@@ -284,3 +284,43 @@ export const handleDeviceStatus = async ({ deviceId, parsed }) => {
     return null;
   }
 };
+
+/**
+ * Handle a 0x94 / type 0x0A LBS report (cell tower data without GPS fix).
+ * Stores the cell tower list in device_state.metadata for later geolocation lookup.
+ */
+export const handleLbsReport = async ({ deviceId, parsed }) => {
+  const cellTowers = parsed?.cellTowers;
+  if (!deviceId || !cellTowers?.length) return null;
+
+  const device = await getDevice({ device_id: deviceId, is_active: true });
+  if (!device) return null;
+
+  try {
+    let deviceState = await getDeviceState({ device_id: device.id });
+    if (!deviceState) deviceState = await createDeviceState({ device_id: device.id });
+
+    const validTowers = cellTowers.filter(t => t.plmnValid);
+    await updateDeviceState(deviceState, {
+      metadata: {
+        ...(deviceState.metadata || {}),
+        lbs: {
+          cellTowers,
+          validTowers,
+          primaryCarrier: validTowers[0]?.carrier || null,
+          reportedAt: new Date().toISOString()
+        }
+      },
+      updated_at: new Date()
+    });
+
+    const summary = validTowers
+      .map(t => `${t.carrier || `MCC${t.mcc}/MNC${t.mnc}`} LAC=${t.lac} CID=${t.cellId}`)
+      .join(' | ');
+    logger.info(`LBS report: deviceId=${deviceId} towers=${cellTowers.length} valid=${validTowers.length} ${summary}`);
+    return cellTowers;
+  } catch (error) {
+    logger.error(`handleLbsReport failed for ${deviceId}: ${error.message}`);
+    return null;
+  }
+};
