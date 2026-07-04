@@ -141,6 +141,7 @@ const getBridgeTopic = async (deviceId, channel) => {
 const buildBridgePayload = (deviceId, parsed, locationReverseGeocode) => ({
   device_id: deviceId,
   lat: parsed?.latitude ?? null,
+  gps_fixed: parsed?.courseStatusFlags?.gpsFixed ?? null,
   lng: parsed?.longitude ?? null,
   address: locationReverseGeocode ?? null,
   speed: parsed?.speed ?? null,
