@@ -54,6 +54,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       battery_level: batteryLevel,
       gsm_signal: gsmSignal,
       ignition: ignitionOn,
+      last_recorded_at: new Date(),
       updated_at: new Date()
     });
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn}`);
@@ -161,6 +162,7 @@ export const handleRelayEvent = async ({ deviceId, parsed }) => {
 
     await updateDeviceState(deviceState, {
       relay_status: parsed.relayOn,
+      last_recorded_at: new Date(),
       updated_at: new Date()
     });
 
