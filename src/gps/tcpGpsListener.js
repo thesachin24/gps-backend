@@ -169,6 +169,7 @@ class GpsTcpListener {
     if (parsed?.protocol === 'heartbeat') {
       // console.log('HEARTBEAT RECEIVED:', parsed);
       void saveHeartbeat({ deviceId, parsed });
+      publishGpsToMqtt(getBridgeTopic(deviceId, 'heartbeat') , parsed);
     }
 
     if (parsed?.commandResponse) {
