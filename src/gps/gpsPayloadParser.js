@@ -347,6 +347,15 @@ const decodeInfoTransmissionPayload = (infoType, payloadBuffer) => {
 };
 
 const decodeHeartbeatTerminalInfo = terminalInfo => {
+  // Standard GT06 terminalInfo bit layout:
+  //   Bit 0 – defense/armed (relay state)
+  //   Bit 1 – ACC / ignition on
+  //   Bit 2 – charging
+  //   Bits 3-5 – alarm code
+  //   Bit 6 – GPS tracking active (module powered & searching/locked)
+  //   Bit 7 – GPS course valid (device has a confirmed GPS fix)
+  // Note: bit assignment varies between firmware revisions. Bits 6 & 7
+  // are the most vendor-specific; treat them as advisory signals.
   const alarmCode = (terminalInfo >> 3) & 0x07;
   return {
     raw: terminalInfo,
@@ -355,7 +364,10 @@ const decodeHeartbeatTerminalInfo = terminalInfo => {
     ignitionOn: (terminalInfo & 0x02) !== 0,
     charging: (terminalInfo & 0x04) !== 0,
     alarmCode,
-    alarmType: decodeHeartbeatAlarm(alarmCode)
+    alarmType: decodeHeartbeatAlarm(alarmCode),
+    // GPS status flags (bits 6-7)
+    gpsTracking: (terminalInfo & 0x40) !== 0,
+    gpsCourseValid: (terminalInfo & 0x80) !== 0
   };
 };
 const decodeGt06InfoTransmission = infoBuffer => {
@@ -426,7 +438,6 @@ const decodeGt06GpsLbs = infoBuffer => {
   if (!infoBuffer || infoBuffer.length < 12) {
     return null;
   }
-console.log(' NEw ------------------ Info Buffer:-------->', infoBuffer.toString('hex'));
   const timestamp = decodeGt06DateTime(infoBuffer.subarray(0, 6));
   const gpsInfoSat = infoBuffer[6];
   const gpsInfoLength = (gpsInfoSat & 0xf0) >> 4;
@@ -686,7 +697,6 @@ const parseGt06Payload = rawBuffer => {
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x13) {
-    console.log(' Entire Heartbeat Packet:-------->', rawBuffer.toString('hex'));
     // Heartbeat commonly carries terminal status bytes.
     if (infoBuffer.length >= 5) {
       const terminalInfo = infoBuffer[0];
@@ -712,7 +722,6 @@ const parseGt06Payload = rawBuffer => {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x12 || protocolNo === 0x22) {
     const gps = decodeGt06GpsLbs(infoBuffer);
-    console.log('GPS:-------->', gps);
     if (gps) {
       parsed.latitude = gps.latitude;
       parsed.longitude = gps.longitude;

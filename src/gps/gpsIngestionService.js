@@ -39,11 +39,14 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     };
     console.log('HEARTBEAT DATA:----------->', heartbeatData);
 
-    // Extract relay_status and ignition from terminalInfo bits
+    // Extract relay_status, ignition, and GPS tracking flags from terminalInfo bits
     const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
     const ignitionOn = parsed.heartbeat?.terminalInfoDecoded?.ignitionOn ?? null;
     const batteryLevel = parsed.heartbeat?.batteryLevel ?? null;
     const gsmSignal = parsed.heartbeat?.gsmSignal ?? null;
+    const gpsTracking = parsed.heartbeat?.terminalInfoDecoded?.gpsTracking ?? null;
+    // gpsCourseValid from heartbeat is advisory only — overwritten by GPS packet data
+    const gpsCourseValid = parsed.heartbeat?.terminalInfoDecoded?.gpsCourseValid ?? null;
     let deviceState = await getDeviceState({ device_id: device.id });
     if (!deviceState) {
       deviceState = await createDeviceState({ device_id: device.id });
@@ -54,10 +57,13 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       battery_level: batteryLevel,
       gsm_signal: gsmSignal,
       ignition: ignitionOn,
+      gps_tracking: gpsTracking,
+      // Only update gps_fixed from heartbeat if no GPS packet has set it yet
+      ...(deviceState.gps_fixed === null && gpsCourseValid !== null ? { gps_fixed: gpsCourseValid } : {}),
       last_recorded_at: new Date(),
       updated_at: new Date()
     });
-    logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn}`);
+    logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
     return heartbeatData;
   } catch (error) {
     logger.error(`Failed to persist heartbeat for ${deviceId}: ${error.message}`);
@@ -123,6 +129,8 @@ export const saveGpsLocation = async ({
       speed: parsed.speed !== undefined ? parsed.speed : null,
       heading: parsed.heading !== undefined ? parsed.heading : null,
       ignition: parsed.ignition !== undefined ? parsed.ignition : null,
+      gps_fixed: parsed.courseStatusFlags?.gpsFixed ?? parsed.gpsFixed ?? null,
+      satellites: parsed.satellites !== undefined ? parsed.satellites : null,
       metadata: metadata || {
         transport,
         parsed

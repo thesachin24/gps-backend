@@ -52,6 +52,21 @@ const DeviceState = sequelize.define(
       type: Sequelize.INTEGER,
       comment: 'Battery level from heartbeat batteryLevel'
     },
+    gps_fixed: {
+      allowNull: true,
+      type: Sequelize.BOOLEAN,
+      comment: 'True if device has a valid GPS fix (courseStatus bit 12 from GPS packet)'
+    },
+    satellites: {
+      allowNull: true,
+      type: Sequelize.INTEGER,
+      comment: 'Number of satellites in use at last GPS fix'
+    },
+    gps_tracking: {
+      allowNull: true,
+      type: Sequelize.BOOLEAN,
+      comment: 'True if GPS module is actively tracking (bit 6 of heartbeat terminalInfo)'
+    },
     heartbeat: {
       allowNull: true,
       type: Sequelize.JSONB,
