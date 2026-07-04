@@ -402,21 +402,21 @@ export const BANNERS_FIELD = [
   "created_at"
 ];
 
-export const HARDWARE_DEVICE_FIELD = [
-  "id",
-  "user_id",
-  "device_id",
-  "device_type",
-  "name",
-  "metadata",
-  "heartbeat",
-  "latitude",
-  "longitude",
-  "last_recorded_at",
-  "is_active",
-  "created_at",
-  "updated_at"
-];
+// export const HARDWARE_DEVICE_FIELD = [
+//   "id",
+//   "user_id",
+//   "device_id",
+//   "device_type",
+//   "name",
+//   "metadata",
+//   "heartbeat",
+//   "latitude",
+//   "longitude",
+//   "last_recorded_at",
+//   "is_active",
+//   "created_at",
+//   "updated_at"
+// ];
 
 export const DEVICE_FIELD = [
   "id",

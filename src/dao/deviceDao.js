@@ -17,7 +17,7 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
       {
         model: DeviceState,
         as: 'device_state',
-        attributes: ['latitude', 'longitude', 'speed', 'heading', 'ignition', 'relay_status', 'heartbeat', 'last_recorded_at', 'metadata']
+        attributes: ['latitude', 'longitude', 'speed', 'heading', 'ignition', 'relay_status', 'last_recorded_at', 'gsm_signal', 'battery_level']
       },
       {
         model: DeviceAssetMap,

@@ -42,6 +42,16 @@ const DeviceState = sequelize.define(
       type: Sequelize.BOOLEAN,
       comment: 'Relay/immobilizer state from heartbeat terminalInfo bit 0 (armed)'
     },
+    gsm_signal: {
+      allowNull: true,
+      type: Sequelize.STRING,
+      comment: 'GSM signal strength from heartbeat gsmSignal'
+    },
+    battery_level: {
+      allowNull: true,
+      type: Sequelize.INTEGER,
+      comment: 'Battery level from heartbeat batteryLevel'
+    },
     heartbeat: {
       allowNull: true,
       type: Sequelize.JSONB,

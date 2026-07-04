@@ -42,7 +42,8 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     // Extract relay_status and ignition from terminalInfo bits
     const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
     const ignitionOn = parsed.heartbeat?.terminalInfoDecoded?.ignitionOn ?? null;
-
+    const batteryLevel = parsed.heartbeat?.batteryLevel ?? null;
+    const gsmSignal = parsed.heartbeat?.gsmSignal ?? null;
     let deviceState = await getDeviceState({ device_id: device.id });
     if (!deviceState) {
       deviceState = await createDeviceState({ device_id: device.id });
@@ -50,6 +51,8 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     await updateDeviceState(deviceState, {
       heartbeat: heartbeatData,
       relay_status: relayStatus,
+      battery_level: batteryLevel,
+      gsm_signal: gsmSignal,
       ignition: ignitionOn,
       updated_at: new Date()
     });

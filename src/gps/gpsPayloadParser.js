@@ -155,21 +155,10 @@ const crc16Itu = bytes => {
 };
 
 const decodeBatteryLevel = level => {
-  // Standard GT06 uses 0-6 enum. Some devices send raw ADC (0-255).
-  // Detect raw ADC when value > 6 and convert to percentage.
-  if (level > 6) {
-    return `raw_adc_${level} (~${Math.round((level / 255) * 100)}%)`;
-  }
-  const map = {
-    0: 'unknown',
-    1: 'very_low',
-    2: 'low',
-    3: 'medium',
-    4: 'high',
-    5: 'very_high',
-    6: 'full'
-  };
-  return map[level] || 'unknown';
+
+  // Return % of battery level
+  return Math.round((level / 255) * 100) || null;
+
 };
 
 const decodeGsmSignal = level => {
@@ -397,7 +386,7 @@ const decodeGt06GpsLbs = infoBuffer => {
   if (!infoBuffer || infoBuffer.length < 12) {
     return null;
   }
-
+console.log(' NEw ------------------ Info Buffer:-------->', infoBuffer.toString('hex'));
   const timestamp = decodeGt06DateTime(infoBuffer.subarray(0, 6));
   const gpsInfoSat = infoBuffer[6];
   const gpsInfoLength = (gpsInfoSat & 0xf0) >> 4;
