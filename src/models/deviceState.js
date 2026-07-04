@@ -24,6 +24,10 @@ const DeviceState = sequelize.define(
       allowNull: true,
       type: Sequelize.DECIMAL(9, 6),
     },
+    address: {
+      allowNull: true,
+      type: Sequelize.STRING,
+    },
     speed: {
       allowNull: true,
       type: Sequelize.FLOAT,

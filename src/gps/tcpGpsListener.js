@@ -68,6 +68,18 @@ const readDelimitedMessages = buffer => {
   return { messages, rest };
 };
 
+const getLocationReverseGeocode = async (latitude, longitude) => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=en&format=jsonv2`);
+    const data = await response.json();
+    const { display_name } = data;
+    return display_name;
+  } catch (error) {
+    logger.error(`Failed to get location reverse geocode: ${error.message}`);
+    return null;
+  }
+};
+
 const inferDeviceId = (parsed, rawMessage, socket) => {
   if (socket?._gpsDeviceId) {
     return socket._gpsDeviceId;
@@ -111,10 +123,11 @@ const getBridgeTopic = async (deviceId, channel) => {
   // return `gps/delhi-sim-001/data`;
 };
 
-const buildBridgePayload = (deviceId, parsed) => ({
+const buildBridgePayload = (deviceId, parsed, locationReverseGeocode) => ({
   device_id: deviceId,
   lat: parsed?.latitude ?? null,
   lng: parsed?.longitude ?? null,
+  address: locationReverseGeocode ?? null,
   speed: parsed?.speed ?? null,
   heading: parsed?.heading ?? null,
   timestamp: parsed?.timestamp || new Date().toISOString(),
@@ -177,7 +190,7 @@ const buildHeartbeatPayload = (deviceId, parsed) => ({
   // alarm_language: parsed?.heartbeat?.alarmLanguage ?? null,
   // alarm_byte: parsed?.heartbeat?.alarmByte ?? null,  // not used
   // language_byte: parsed?.heartbeat?.languageByte ?? null,
-  timestamp: new Date().toISOString(),
+  // timestamp: new Date().toISOString(),
   source: parsed?.protocol || 'heartbeat'
 });
 
@@ -216,8 +229,12 @@ class GpsTcpListener {
     logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event, null, 2)}`);
 
     if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
+
+      // Get Location Reverse Geocode
+      const locationReverseGeocode = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
+      console.log('LOCATION REVERSE GEOCODE:', locationReverseGeocode);
       // Publish GPS location to MQTT bridge
-      const payload = buildBridgePayload(deviceId, parsed);
+      const payload = buildBridgePayload(deviceId, parsed, locationReverseGeocode);
       const topic = await getBridgeTopic(deviceId, 'location');
       publishGpsToMqtt(topic, payload);
       
@@ -227,7 +244,8 @@ class GpsTcpListener {
         parsed,
         transport: 'tcp',
         source: parsed?.protocol === 'gps_lbs' ? 'gps_lbs' : 'gps_lbs_extended',
-        metadata: parsed
+        metadata: parsed,
+        locationReverseGeocode
       });
     }
 
