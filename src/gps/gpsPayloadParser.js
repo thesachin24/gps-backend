@@ -646,7 +646,7 @@ const parseGt06Payload = rawBuffer => {
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x13) {
-    console.log(' Entire Heartbeat Packet:-------->', infoBuffer.toString('hex'));
+    console.log(' Entire Heartbeat Packet:-------->', rawBuffer.toString('hex'));
     // Heartbeat commonly carries terminal status bytes.
     if (infoBuffer.length >= 5) {
       const terminalInfo = infoBuffer[0];
