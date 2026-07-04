@@ -4,6 +4,7 @@ import { parseGpsPayload } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
 import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
+import { getDevice } from '../dao';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -92,11 +93,16 @@ const inferDeviceId = (parsed, rawMessage, socket) => {
   return `tcp_${remoteAddress}_${remotePort}`;
 };
 
-const getBridgeTopic = (deviceId, channel) => {
+const getBridgeTopic = async (deviceId, channel) => {
+  const device = await getDevice(deviceId);
+  if (!device) {
+    logger.error(`Device not found: ${deviceId}`);
+    return `${process.env.NODE_ENV}/gps/v1/unknown/${deviceId}/${channel}`;
+  }
   // <env>/<product>/<version>/<device_id>/<channel></channel>
   const TOPICS = {
-    location: `${process.env.NODE_ENV}/gps/v1/${deviceId}/location`,
-    heartbeat: `${process.env.NODE_ENV}/gps/v1/${deviceId}/heartbeat`,
+    location: `${process.env.NODE_ENV}/gps/v1/${device.owner_id}/${deviceId}/location`,
+    heartbeat: `${process.env.NODE_ENV}/gps/v1/${device.owner_id}/${deviceId}/heartbeat`,
     // info: `prod/gps/v1/${deviceId}/info`
   };
   // const prefix = process.env.GPS_MQTT_BRIDGE_TOPIC_PREFIX || 'gps/bridge';
@@ -181,7 +187,7 @@ class GpsTcpListener {
     this.started = false;
   }
 
-  handleParsedMessage(socket, remote, rawMessage) {
+  async handleParsedMessage(socket, remote, rawMessage) {
     const parsed = parseGpsPayload(rawMessage);
     if (parsed?.imei) {
       socket._gpsDeviceId = String(parsed.imei);
@@ -208,15 +214,15 @@ class GpsTcpListener {
 
     //Format JSON
     logger.info(`GPS TCP ${parsed.type === 'gps_fix' ? 'FIX' : 'MSG'} ${JSON.stringify(event, null, 2)}`);
-    // publishGpsToMqtt(getBridgeTopic(deviceId), buildBridgePayload(deviceId, parsed));
 
     if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed);
-      publishGpsToMqtt(getBridgeTopic(deviceId, 'location') , payload);
+      const topic = await getBridgeTopic(deviceId, 'location');
+      publishGpsToMqtt(topic, payload);
       
       // Save GPS location to database
-      void saveGpsLocation({
+      await saveGpsLocation({
         deviceId,
         parsed,
         transport: 'tcp',
@@ -230,7 +236,8 @@ class GpsTcpListener {
       // console.log('HEARTBEAT RECEIVED:', parsed);
       void saveHeartbeat({ deviceId, parsed });
       const payload = buildHeartbeatPayload(deviceId, parsed);
-      publishGpsToMqtt(getBridgeTopic(deviceId, 'heartbeat') , payload);
+      const topic = await getBridgeTopic(deviceId, 'heartbeat');
+      publishGpsToMqtt(topic, payload);
     }
 
     if (parsed?.commandResponse) {
