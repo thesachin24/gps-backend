@@ -115,6 +115,66 @@ const buildBridgePayload = (deviceId, parsed) => ({
   source: parsed?.protocol || 'gps_lbs'
 });
 
+// {
+//   "type":"gt06_packet",
+//   "header":"7878",
+//   "protocolNo":19,
+//   "protocol":"heartbeat",
+//   "packetLength":10,
+//   "infoLength":5,
+//   "infoHex":"44f0038002",
+//   "serialNo":48,
+//   "crc":{
+//      "packet":22581,
+//      "calculated":22581,
+//      "valid":true
+//   },
+//   "rawHex":"78780a1344f0038002003058350d0a",
+//   "packet":{
+//      "startHex":"7878",
+//      "lengthHex":"0a",
+//      "protocolHex":"13",
+//      "infoHex":"44f0038002",
+//      "serialHex":"0030",
+//      "crcHex":"5835",
+//      "stopHex":"0d0a"
+//   },
+//   "heartbeat":{
+//      "messageKind":"status_keepalive",
+//      "terminalInfo":68,
+//      "terminalInfoDecoded":{
+//         "raw":68,
+//         "bits":"01000100",
+//         "armed":false,
+//         "ignitionOn":false,
+//         "charging":true,
+//         "alarmCode":0,
+//         "alarmType":"normal"
+//      },
+//      "voltageLevel":240,
+//      "batteryLevel":"raw_adc_240 (~94%)",
+//      "gsmSignalStrength":3,
+//      "gsmSignal":"good",
+//      "alarmLanguage":32770,
+//      "alarmByte":128,
+//      "languageByte":2
+//   },
+//   "ackHex":"787805130030c9fb0d0a"
+// }
+const buildHeartbeatPayload = (deviceId, parsed) => ({
+  device_id: deviceId,
+  ignition: parsed?.heartbeat?.terminalInfoDecoded?.ignitionOn || null,
+  relay_status: parsed?.heartbeat?.terminalInfoDecoded?.armed || null,
+  battery_level: parsed?.heartbeat?.batteryLevel || null,
+  gsm_signal_strength: parsed?.heartbeat?.gsmSignalStrength || null,
+  gsm_signal: parsed?.heartbeat?.gsmSignal || null,
+  // alarm_language: parsed?.heartbeat?.alarmLanguage ?? null,
+  // alarm_byte: parsed?.heartbeat?.alarmByte ?? null,  // not used
+  // language_byte: parsed?.heartbeat?.languageByte ?? null,
+  timestamp: new Date().toISOString(),
+  source: parsed?.protocol || 'heartbeat'
+});
+
 class GpsTcpListener {
   constructor() {
     this.server = null;
@@ -169,7 +229,8 @@ class GpsTcpListener {
     if (parsed?.protocol === 'heartbeat') {
       // console.log('HEARTBEAT RECEIVED:', parsed);
       void saveHeartbeat({ deviceId, parsed });
-      publishGpsToMqtt(getBridgeTopic(deviceId, 'heartbeat') , parsed);
+      const payload = buildHeartbeatPayload(deviceId, parsed);
+      publishGpsToMqtt(getBridgeTopic(deviceId, 'heartbeat') , payload);
     }
 
     if (parsed?.commandResponse) {
