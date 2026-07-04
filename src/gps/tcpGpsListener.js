@@ -5,6 +5,7 @@ import { publishGpsToMqtt } from './mqttGpsPublisher';
 import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
 import { getDevice } from '../dao';
+import axios from 'axios';
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -68,17 +69,31 @@ const readDelimitedMessages = buffer => {
   return { messages, rest };
 };
 
-const getLocationReverseGeocode = async (latitude, longitude) => {
+async function getLocationReverseGeocode(latitude, longitude) {
   try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=en&format=jsonv2`);
-    const data = await response.json();
-    const { display_name } = data;
-    return display_name;
+    const response = await axios.get(
+      "https://nominatim.openstreetmap.org/reverse",
+      {
+        params: {
+          lat: latitude,
+          lon: longitude,
+          format: "jsonv2",
+          zoom: 18,
+          addressdetails: 1,
+          "accept-language": "en",
+        },
+        headers: {
+          "User-Agent": "MyApp/1.0",
+        },
+      }
+    );
+
+    return response.data.display_name;
   } catch (error) {
-    logger.error(`Failed to get location reverse geocode: ${error.message}`);
+    console.error(error.response?.data || error.message);
     return null;
   }
-};
+}
 
 const inferDeviceId = (parsed, rawMessage, socket) => {
   if (socket?._gpsDeviceId) {
