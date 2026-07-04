@@ -121,7 +121,7 @@ const inferDeviceId = (parsed, rawMessage, socket) => {
 };
 
 const getBridgeTopic = async (deviceId, channel) => {
-  const device = await getDevice(deviceId, ['owner_id']);
+  const device = await getDevice({ device_id: deviceId }, ['owner_id']);
   if (!device) {
     logger.error(`Device not found: ${deviceId}`);
     return `${process.env.NODE_ENV}/gps/v1/unknown/${deviceId}/${channel}`;

@@ -64,7 +64,8 @@ process.on('uncaughtException', err => {
 });
 
 process.on('unhandledRejection', (reason, p) => {
-  logger.info(`Unhandled Rejection at: ${p}, reason:, ${reason}`);
+  const stack = reason instanceof Error ? reason.stack : String(reason);
+  logger.error(`Unhandled Rejection at: ${p}\nReason: ${stack}`);
 });
 
 process.on('SIGINT', () => {

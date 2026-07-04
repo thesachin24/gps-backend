@@ -42,5 +42,5 @@ export const updateMultipleOption = (payload) => {
   
 export const deleteOption = id =>
   optionModel.destroy({
-    where: id
+    where: { id }
   });
