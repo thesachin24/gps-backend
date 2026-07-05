@@ -78,8 +78,8 @@ export const getAllDevices = async payload => {
   }
 };
 
-export const getDeviceDetail = async (id, user_id) => {
-  const data = await getDeviceById({ id, user_id });
+export const getDeviceDetail = async (id, owner_id) => {
+  const data = await getDeviceById({ id, owner_id });
   if (!data) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
