@@ -67,5 +67,14 @@ export const device = {
       to: Joi.date().iso().optional(),
       stop_duration: Joi.number().integer().min(1).max(1440).optional().default(15)
     }
+  },
+  getDeviceSummary: {
+    params: {
+      id: Joi.number().integer().positive().required()
+    },
+    query: {
+      from: Joi.date().iso().optional(),
+      to: Joi.date().iso().optional()
+    }
   }
 };

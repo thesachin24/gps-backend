@@ -7,6 +7,7 @@ import {
   getAllDeviceLocationList,
   getDeviceDetails,
   getDeviceList,
+  getDeviceSummary,
   getDeviceTrips,
   updateDevice
 } from '../controller';
@@ -219,4 +220,20 @@ deviceRoutes.get('/:id/commands', authenticate, getCommandList);
  */
 deviceRoutes.get('/:id/commands/:commandId', authenticate, getCommandDetail);
 
+/**
+ * @swagger
+ * /devices/{id}/summary:
+ *   get:
+ *     description: Get device summary
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/summary',
+  authenticate,
+  validate(device.getDeviceSummary), 
+  catchValidationErrors,
+  getDeviceSummary
+);
 export default deviceRoutes;

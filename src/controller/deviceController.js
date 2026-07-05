@@ -13,7 +13,8 @@ import {
   updateDeviceDetail,
   deleteDevices,
   getDeviceTripsData,
-  getAllDeviceLocationListData
+  getAllDeviceLocationListData,
+  getDeviceSummaryData
 } from '../service';
 
 export const getDeviceList = async (req, res) => {
@@ -111,6 +112,21 @@ export const getDeviceTrips = async (req, res) => {
   const { params: { id }, query } = req;
   try {
     const response = await getDeviceTripsData({ id, ...query });
+    return res.status(OK).json(response);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
+
+//Summary
+export const getDeviceSummary = async (req, res) => {
+  const { params: { id }, 
+  query: { from, to },
+  auth: { user_id }
+ } = req;
+  try {
+    const response = await getDeviceSummaryData({ id, from, to, owner_id: user_id });
     return res.status(OK).json(response);
   } catch (err) {
     logger.error(err);

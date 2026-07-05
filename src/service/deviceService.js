@@ -16,7 +16,8 @@ import {
   getDeviceByDeviceIdIgnoreCase,
   createDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
+  getDeviceSummary
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
 import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getTelemetryList } from '../dao';
@@ -260,4 +261,15 @@ export const getAllDeviceLocationListData = async payload => {
   } catch (err) {
     throw new CustomError(SERVER_ERROR, err.message);
   }
+};
+
+export const getDeviceSummaryData = async ({ id, from, to, owner_id }) => {
+  const data = await getDeviceSummary({ id, from, to, owner_id });
+  if (!data) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
+  }
+  return {
+    message: MESSAGE_CONSTANTS.SUCCESS,
+    data
+  };
 };

@@ -154,11 +154,46 @@ const crc16Itu = bytes => {
   return crc;
 };
 
+/**
+ * Decode the raw voltageLevel byte from a GT06 heartbeat packet into a
+ * human-readable battery percentage and encoding label.
+ *
+ * Two distinct firmware families exist:
+ *
+ * A) Standard GT06 discrete level  (voltageLevel 0-6)
+ *    A scalar "tank" indicator — not a real voltage.
+ *    0 = no power / external power cut
+ *    1 = very low  (~5%)
+ *    2 = low       (~25%)
+ *    3 = medium    (~50%)
+ *    4 = high      (~75%)
+ *    5 = full      (~90%)
+ *    6 = full/charging (~100%)
+ *
+ * B) Raw 8-bit ADC  (voltageLevel 7-255)
+ *    A raw ADC sample of the battery voltage circuit.
+ *    Linear scale: 0 → 0%, 255 → 100%.
+ *    Values seen in the wild: ~180 (70%) to 255 (100%).
+ *
+ * Heuristic: ≤ 6 → discrete level, > 6 → raw ADC.
+ */
+const DISCRETE_BATTERY_TABLE = { 0: 0, 1: 5, 2: 25, 3: 50, 4: 75, 5: 90, 6: 100 };
+
 const decodeBatteryLevel = level => {
+  if (level === null || level === undefined) return null;
 
-  // Return % of battery level
-  return Math.round((level / 255) * 100) || null;
+  if (level <= 6) {
+    const pct = DISCRETE_BATTERY_TABLE[level];
+    return pct !== undefined ? pct : null;
+  }
 
+  // Raw ADC: linear 0-255 → 0-100%
+  return Math.round((level / 255) * 100);
+};
+
+const batteryEncoding = level => {
+  if (level === null || level === undefined) return null;
+  return level <= 6 ? 'discrete_level' : 'raw_adc';
 };
 
 const decodeGsmSignal = level => {
@@ -238,11 +273,11 @@ const decodeGt06Alarm = infoBuffer => {
     terminalInfoDecoded: decodeHeartbeatTerminalInfo(terminalInfo),
     voltageLevel,
     batteryLevel: decodeBatteryLevel(voltageLevel),
+    batteryEncoding: batteryEncoding(voltageLevel),
     gsmSignalStrength,
     gsmSignal: decodeGsmSignal(gsmSignalStrength),
     alarmStatus,
     alarmName,
-    // Convenience flag: true = relay is ON (engine cut), false = relay is OFF
     relayOn: alarmStatus === 0x09 ? true : alarmStatus === 0x0a ? false : null
   };
 };
@@ -555,6 +590,7 @@ const decodeGt06StatusExtended = infoBuffer => {
       terminalInfoDecoded: terminalInfo !== null ? decodeHeartbeatTerminalInfo(terminalInfo) : null,
       voltageLevel,
       batteryLevel: voltageLevel !== null ? decodeBatteryLevel(voltageLevel) : null,
+      batteryEncoding: voltageLevel !== null ? batteryEncoding(voltageLevel) : null,
       gsmSignal,
       gsmSignalDecoded: gsmSignal !== null ? decodeGsmSignal(gsmSignal) : null,
       alarmStatus,
@@ -710,6 +746,7 @@ const parseGt06Payload = rawBuffer => {
         terminalInfoDecoded: decodeHeartbeatTerminalInfo(terminalInfo),
         voltageLevel,
         batteryLevel: decodeBatteryLevel(voltageLevel),
+        batteryEncoding: batteryEncoding(voltageLevel),
         gsmSignalStrength,
         gsmSignal: decodeGsmSignal(gsmSignalStrength),
         alarmLanguage: infoBuffer.readUInt16BE(3),
@@ -741,7 +778,6 @@ const parseGt06Payload = rawBuffer => {
     }
   } else if (protocolNo === 0x24) {
     const statusPkt = decodeGt06StatusExtended(infoBuffer);
-    console.log('Status Pkt:-------->', statusPkt);
     if (statusPkt) {
       parsed.timestamp = statusPkt.timestamp;
       parsed.satellites = statusPkt.satellites;
