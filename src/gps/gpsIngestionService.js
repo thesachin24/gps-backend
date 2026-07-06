@@ -60,7 +60,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       gps_tracking: gpsTracking,
       // Only update gps_fixed from heartbeat if no GPS packet has set it yet
       ...(deviceState.gps_fixed === null && gpsCourseValid !== null ? { gps_fixed: gpsCourseValid } : {}),
-      last_recorded_at: new Date(),
+      last_heartbeat_at: new Date(),
       updated_at: new Date()
     });
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
@@ -77,7 +77,7 @@ export const saveGpsLocation = async ({
   transport,
   source,
   metadata,
-  locationReverseGeocode
+  locationReverseGeocode: { location, address }
 }) => {
   if (!deviceId || !isValidFix(parsed)) {
     logger.info(`GPS persist skipped: invalid fix payload deviceId=${deviceId || 'unknown'} parsed=${JSON.stringify(parsed || {})}`);
@@ -132,12 +132,13 @@ export const saveGpsLocation = async ({
       ignition: parsed.ignition !== undefined ? parsed.ignition : null,
       gps_fixed: parsed.courseStatusFlags?.gpsFixed ?? parsed.gpsFixed ?? null,
       satellites: parsed.satellites !== undefined ? parsed.satellites : null,
-      address: locationReverseGeocode || null,
+      address: address || null,
+      location: location || null,
       metadata: metadata || {
         transport,
         parsed
       },
-      last_recorded_at: recordedAt,
+      last_location_at: recordedAt,
       updated_at: new Date()
     });
     logger.info(`GPS persist success: deviceId=${deviceId} telemetryId=${telemetryData?.id || 'na'}`);
@@ -172,7 +173,7 @@ export const handleRelayEvent = async ({ deviceId, parsed }) => {
 
     await updateDeviceState(deviceState, {
       relay_status: parsed.relayOn,
-      last_recorded_at: new Date(),
+      last_heartbeat_at: new Date(),
       updated_at: new Date()
     });
 

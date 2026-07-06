@@ -28,6 +28,10 @@ const DeviceState = sequelize.define(
       allowNull: true,
       type: Sequelize.STRING,
     },
+    location: {
+      allowNull: true,
+      type: Sequelize.JSONB,
+    },
     speed: {
       allowNull: true,
       type: Sequelize.FLOAT,
@@ -80,7 +84,11 @@ const DeviceState = sequelize.define(
       allowNull: true,
       type: Sequelize.JSONB,
     },
-    last_recorded_at: {
+    last_heartbeat_at: {
+      allowNull: true,
+      type: Sequelize.DATE,
+    },
+    last_location_at: {
       allowNull: true,
       type: Sequelize.DATE,
     },

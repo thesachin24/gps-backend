@@ -87,12 +87,12 @@ async function getLocationReverseGeocode(latitude, longitude) {
         },
       }
     );
-
-    return response.data.display_name;
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    return null;
-  }
+    const data = response.data;
+    return {
+      location: data.display_name,
+      address: data.address
+    };
+  } catch (error) {}
 }
 
 const inferDeviceId = (parsed, rawMessage, socket) => {
@@ -143,7 +143,8 @@ const buildBridgePayload = (deviceId, parsed, locationReverseGeocode) => ({
   lat: parsed?.latitude ?? null,
   gps_fixed: parsed?.courseStatusFlags?.gpsFixed ?? null,
   lng: parsed?.longitude ?? null,
-  address: locationReverseGeocode ?? null,
+  address: locationReverseGeocode?.address ?? null,
+  location: locationReverseGeocode?.location ?? null,
   speed: parsed?.speed ?? null,
   heading: parsed?.heading ?? null,
   timestamp: parsed?.timestamp || new Date().toISOString(),
@@ -247,10 +248,10 @@ class GpsTcpListener {
     if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
 
       // Get Location Reverse Geocode
-      const locationReverseGeocode = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
-      console.log('LOCATION REVERSE GEOCODE:', locationReverseGeocode);
+      const { location, address } = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
+      console.log('LOCATION REVERSE GEOCODE:', location, address);
       // Publish GPS location to MQTT bridge
-      const payload = buildBridgePayload(deviceId, parsed, locationReverseGeocode);
+      const payload = buildBridgePayload(deviceId, parsed, { location, address });
       const topic = await getBridgeTopic(deviceId, 'location');
       publishGpsToMqtt(topic, payload);
       
@@ -261,7 +262,7 @@ class GpsTcpListener {
         transport: 'tcp',
         source: parsed?.protocol === 'gps_lbs' ? 'gps_lbs' : 'gps_lbs_extended',
         metadata: parsed,
-        locationReverseGeocode
+        locationReverseGeocode: { location, address }
       });
     }
 
