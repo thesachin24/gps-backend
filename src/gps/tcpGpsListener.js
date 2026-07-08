@@ -329,7 +329,7 @@ class GpsTcpListener {
             // Serial number (2 bytes before CRC)
             const serial = hex.substring(hex.length - 12, hex.length - 8);
         
-            console.log('Serial:', serial);
+            // console.log('Serial:', serial);
         
             // Temporary ACK
             const ack = Buffer.from(
@@ -339,7 +339,7 @@ class GpsTcpListener {
         
             socket.write(ack);
         
-            console.log('LOGIN ACK SENT:', ack.toString('hex'));
+            // console.log('LOGIN ACK SENT:', ack.toString('hex'));
           }
           socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
