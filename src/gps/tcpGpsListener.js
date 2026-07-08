@@ -293,7 +293,7 @@ class GpsTcpListener {
 
     if (parsed?.ackHex) {
       socket.write(Buffer.from(parsed.ackHex, 'hex'));
-      logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
+      // logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
     }
   }
 
