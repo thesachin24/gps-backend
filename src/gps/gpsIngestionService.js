@@ -38,7 +38,6 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       received_at: new Date().toISOString()
     };
     // console.log('HEARTBEAT DATA:----------->', heartbeatData);
-    console.log('HEARTBEAT DATA Received Device:----------->', deviceId,);
 
     // Extract relay_status, ignition, and GPS tracking flags from terminalInfo bits
     const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
@@ -47,11 +46,20 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     const gsmSignal = parsed.heartbeat?.gsmSignal ?? null;
     const gpsTracking = parsed.heartbeat?.terminalInfoDecoded?.gpsTracking ?? null;
 
-    console.log('Relay Status:------->', relayStatus);
-    console.log('Battery Level:------->', batteryLevel);
-    console.log('Ignition:------->', ignitionOn);
-    console.log('GSM Signal:------->', gsmSignal);
-    console.log('GPS Tracking:------->', gpsTracking);
+    // Console to Terminal - Purple Color Print
+    console.log('\x1b[35m%s\x1b[0m', '--------------------------------------------------------------');
+    console.log('\x1b[35m%s\x1b[0m', 'HEARTBEAT DATA Received Device:----------->', deviceId,);
+    console.log('\x1b[35m%s\x1b[0m', 'Relay Status:------->', relayStatus);
+    console.log('\x1b[35m%s\x1b[0m', 'Battery Level:------->', batteryLevel);
+    console.log('\x1b[35m%s\x1b[0m', 'Ignition:------->', ignitionOn);
+    console.log('\x1b[35m%s\x1b[0m', 'GSM Signal:------->', gsmSignal);
+    console.log('\x1b[35m%s\x1b[0m', 'GPS Tracking:------->', gpsTracking);
+    console.log('\x1b[35m%s\x1b[0m', '--------------------------------');
+    console.log('\x1b[35m%s\x1b[0m', 'GPS Course Valid:------->', gpsCourseValid);
+    console.log('\x1b[35m%s\x1b[0m', 'HEARTBEAT DATA Received Device:----------->', deviceId,);
+    console.log('\x1b[35m%s\x1b[0m', '--------------------------------------------------------------');
+    // Console to Terminal - Purple Color Print
+
 
     // gpsCourseValid from heartbeat is advisory only — overwritten by GPS packet data
     const gpsCourseValid = parsed.heartbeat?.terminalInfoDecoded?.gpsCourseValid ?? null;
