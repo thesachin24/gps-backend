@@ -54,8 +54,6 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     console.log('\x1b[35m%s\x1b[0m', 'Ignition:------->', ignitionOn);
     console.log('\x1b[35m%s\x1b[0m', 'GSM Signal:------->', gsmSignal);
     console.log('\x1b[35m%s\x1b[0m', 'GPS Tracking:------->', gpsTracking);
-    console.log('\x1b[35m%s\x1b[0m', '--------------------------------');
-    console.log('\x1b[35m%s\x1b[0m', 'GPS Course Valid:------->', gpsCourseValid);
     console.log('\x1b[35m%s\x1b[0m', 'HEARTBEAT DATA Received Device:----------->', deviceId,);
     console.log('\x1b[35m%s\x1b[0m', '--------------------------------------------------------------');
     // Console to Terminal - Purple Color Print
