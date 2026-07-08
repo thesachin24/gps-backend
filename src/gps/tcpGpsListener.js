@@ -148,7 +148,7 @@ const buildBridgePayload = (deviceId, parsed, locationReverseGeocode) => ({
   location: locationReverseGeocode?.location ?? null,
   speed: parsed?.speed ?? null,
   heading: parsed?.heading ?? null,
-  timestamp: parsed?.timestamp || new Date().toISOString(),
+  last_location_at: parsed?.timestamp || new Date().toISOString(),
   source: parsed?.protocol || 'gps_lbs'
 });
 
@@ -208,7 +208,7 @@ const buildHeartbeatPayload = (deviceId, parsed) => ({
   // alarm_language: parsed?.heartbeat?.alarmLanguage ?? null,
   // alarm_byte: parsed?.heartbeat?.alarmByte ?? null,  // not used
   // language_byte: parsed?.heartbeat?.languageByte ?? null,
-  timestamp: new Date().toISOString(),
+  last_heartbeat_at: new Date().toISOString(),
   source: parsed?.protocol || 'heartbeat'
 });
 
