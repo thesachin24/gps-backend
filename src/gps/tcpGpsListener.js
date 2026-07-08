@@ -256,18 +256,18 @@ class GpsTcpListener {
       const topic = await getBridgeTopic(deviceId, 'location');
       publishGpsToMqtt(topic, payload);
       
-      // Console to Terminal - Orange Color Print
-      console.log('\x1b[35m%s\x1b[0m', '--------------------------------------------------------------');
-      console.log('\x1b[35m%s\x1b[0m', 'LOCATION DATA Received Device:----------->', deviceId);
-      console.log('\x1b[35m%s\x1b[0m', 'Latitude:----------->', parsed?.latitude);
-      console.log('\x1b[35m%s\x1b[0m', 'Longitude:----------->', parsed?.longitude);
-      console.log('\x1b[35m%s\x1b[0m', 'Speed:----------->', parsed?.speed);
-      console.log('\x1b[35m%s\x1b[0m', 'Heading:----------->', parsed?.heading);
-      console.log('\x1b[35m%s\x1b[0m', 'Address:----------->', address);
-      console.log('\x1b[35m%s\x1b[0m', 'Location:----------->', location);
-      console.log('\x1b[35m%s\x1b[0m', 'LOCATION DATA Received Device:----------->', deviceId,);
-      console.log('\x1b[35m%s\x1b[0m', '--------------------------------------------------------------');
-      // Console to Terminal - Orange Color Print
+      // Console to Terminal - Bright Cyan Color Print
+      console.log('\x1b[96m%s\x1b[0m', '--------------------------------------------------------------');
+      console.log('\x1b[96m%s\x1b[0m', 'LOCATION DATA Received Device:----------->', deviceId);
+      console.log('\x1b[96m%s\x1b[0m', 'Latitude:----------->', parsed?.latitude);
+      console.log('\x1b[96m%s\x1b[0m', 'Longitude:----------->', parsed?.longitude);
+      console.log('\x1b[96m%s\x1b[0m', 'Speed:----------->', parsed?.speed);
+      console.log('\x1b[96m%s\x1b[0m', 'Heading:----------->', parsed?.heading);
+      console.log('\x1b[96m%s\x1b[0m', 'Address:----------->', address);
+      console.log('\x1b[96m%s\x1b[0m', 'Location:----------->', location);
+      console.log('\x1b[96m%s\x1b[0m', 'LOCATION DATA Received Device:----------->', deviceId,);
+      console.log('\x1b[96m%s\x1b[0m', '--------------------------------------------------------------');
+      // Console to Terminal - Bright Cyan Color Print
 
       // Save GPS location to database
       await saveGpsLocation({
