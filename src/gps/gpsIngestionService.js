@@ -38,6 +38,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       received_at: new Date().toISOString()
     };
     // console.log('HEARTBEAT DATA:----------->', heartbeatData);
+    console.log('HEARTBEAT DATA Received Device:----------->', deviceId);
 
     // Extract relay_status, ignition, and GPS tracking flags from terminalInfo bits
     const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
