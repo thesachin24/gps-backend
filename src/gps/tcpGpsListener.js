@@ -207,7 +207,7 @@ const buildHeartbeatPayload = (deviceId, parsed) => ({
   // alarm_language: parsed?.heartbeat?.alarmLanguage ?? null,
   // alarm_byte: parsed?.heartbeat?.alarmByte ?? null,  // not used
   // language_byte: parsed?.heartbeat?.languageByte ?? null,
-  // timestamp: new Date().toISOString(),
+  timestamp: new Date().toISOString(),
   source: parsed?.protocol || 'heartbeat'
 });
 
@@ -249,7 +249,7 @@ class GpsTcpListener {
 
       // Get Location Reverse Geocode
       const { location, address } = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
-      console.log('LOCATION REVERSE GEOCODE:', location, address);
+      // console.log('LOCATION REVERSE GEOCODE:', location, address);
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed, { location, address });
       const topic = await getBridgeTopic(deviceId, 'location');

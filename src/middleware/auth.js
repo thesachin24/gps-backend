@@ -84,7 +84,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     if (auth[`user.role`] != 'ADMIN') {
-      console.log(auth)
+      // console.log(auth)
       throw new CustomError(UNAUTHORIZED, MESSAGE_CONSTANTS.ACCESS_DENIED);
     }
     req.auth = auth;

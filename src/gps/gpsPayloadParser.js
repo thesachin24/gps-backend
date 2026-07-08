@@ -813,7 +813,7 @@ const parseGt06Payload = rawBuffer => {
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x16) {
     const alarm = decodeGt06Alarm(infoBuffer);
-    console.log('Alarm:-------->', alarm);
+    // console.log('Alarm:-------->', alarm);
     if (alarm) {
       parsed.alarm = alarm;
       if (alarm.relayOn !== null) {

@@ -487,7 +487,7 @@ export const updateMediaAdmin = async (req, res) => {
     params: { id }
   } = req;
   try {
-    console.log(body);
+    // console.log(body);
     let upload ={};
     if(body.profile_image){
       upload = await uploadImage(id, body);

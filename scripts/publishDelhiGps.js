@@ -168,7 +168,7 @@ const publishLocation = () => {
       console.error('[SIM] Publish failed:', err.message);
       return;
     }
-    console.log(`[SIM] Published to ${TOPIC}:`, payload);
+    // console.log(`[SIM] Published to ${TOPIC}:`, payload);
   });
 
   routeIndex = (routeIndex + 1) % DELHI_ROUTE.length;
@@ -177,8 +177,8 @@ const publishLocation = () => {
 let timer = null;
 
 client.on('connect', () => {
-  console.log(`[SIM] Connected to ${BROKER_URL}`);
-  console.log(`[SIM] Device: ${DEVICE_ID}, Topic: ${TOPIC}, Interval: ${INTERVAL_MS}ms`);
+  // console.log(`[SIM] Connected to ${BROKER_URL}`);
+  // console.log(`[SIM] Device: ${DEVICE_ID}, Topic: ${TOPIC}, Interval: ${INTERVAL_MS}ms`);
   publishLocation();
   timer = setInterval(publishLocation, INTERVAL_MS);
 });

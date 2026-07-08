@@ -150,7 +150,7 @@ const server = net.createServer(socket => {
 
   socket.on('data', chunk => {
     buf = Buffer.concat([buf, chunk]);
-    console.log(`\n[RAW ←] ${chunk.toString('hex')}`);
+    // console.log(`\n[RAW ←] ${chunk.toString('hex')}`);
 
     // Try to split GT06 packets
     while (buf.length >= 5) {
