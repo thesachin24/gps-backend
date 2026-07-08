@@ -256,6 +256,14 @@ class GpsTcpListener {
       const topic = await getBridgeTopic(deviceId, 'location');
       publishGpsToMqtt(topic, payload);
       
+      console.log('LOCATION DATA Received Device:----------->', deviceId);
+      console.log('Latitude:----------->', parsed?.latitude);
+      console.log('Longitude:----------->', parsed?.longitude);
+      console.log('Speed:----------->', parsed?.speed);
+      console.log('Heading:----------->', parsed?.heading);
+      console.log('Address:----------->', address);
+      console.log('Location:----------->', location);
+      
       // Save GPS location to database
       await saveGpsLocation({
         deviceId,
