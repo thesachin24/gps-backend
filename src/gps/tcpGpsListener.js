@@ -320,7 +320,7 @@ class GpsTcpListener {
         try {
           const hex = chunk.toString('hex');
 
-          console.log('RAW HEX:', hex);
+          // console.log('RAW HEX:', hex);
         
           // Login packet
           if (hex.startsWith('7878') && hex.substr(6, 2) === '01') {
