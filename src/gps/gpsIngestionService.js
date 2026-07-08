@@ -38,7 +38,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       received_at: new Date().toISOString()
     };
     // console.log('HEARTBEAT DATA:----------->', heartbeatData);
-    console.log('HEARTBEAT DATA Received Device:----------->', deviceId);
+    console.log('HEARTBEAT DATA Received Device:----------->', deviceId,);
 
     // Extract relay_status, ignition, and GPS tracking flags from terminalInfo bits
     const relayStatus = parsed.heartbeat?.terminalInfoDecoded?.armed ?? null;
@@ -46,6 +46,13 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     const batteryLevel = parsed.heartbeat?.batteryLevel ?? null;
     const gsmSignal = parsed.heartbeat?.gsmSignal ?? null;
     const gpsTracking = parsed.heartbeat?.terminalInfoDecoded?.gpsTracking ?? null;
+
+    console.log('Relay Status:------->', relayStatus);
+    console.log('Battery Level:------->', batteryLevel);
+    console.log('Ignition:------->', ignitionOn);
+    console.log('GSM Signal:------->', gsmSignal);
+    console.log('GPS Tracking:------->', gpsTracking);
+
     // gpsCourseValid from heartbeat is advisory only — overwritten by GPS packet data
     const gpsCourseValid = parsed.heartbeat?.terminalInfoDecoded?.gpsCourseValid ?? null;
     let deviceState = await getDeviceState({ device_id: device.id });
