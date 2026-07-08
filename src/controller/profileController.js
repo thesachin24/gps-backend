@@ -25,7 +25,7 @@ export const getProfile = async (req, res) => {
   } = req;
   try {
     const profile = await getProfileData(user_id);
-    console.log("profile",profile)
+    // console.log("profile",profile)
     return res.status(OK).json(profile);
   } catch (err) {
     logger.error(err);
