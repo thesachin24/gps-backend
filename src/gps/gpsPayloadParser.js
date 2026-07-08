@@ -515,8 +515,8 @@ const decodeGt06GpsLbs = infoBuffer => {
       isSouth,
       isWest
     },
-    latitude: Number(latitude.toFixed(6)),
-    longitude: Number(longitude.toFixed(6)),
+    latitude: Number(latitude.toFixed(8)),
+    longitude: Number(longitude.toFixed(8)),
     speedKph: speed,
     speed,
     heading,
