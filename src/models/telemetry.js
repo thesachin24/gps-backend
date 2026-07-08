@@ -38,6 +38,10 @@ const Telemetry = sequelize.define(
       allowNull: false,
       type: Sequelize.DATE,
     },
+    location: {
+      allowNull: true,
+      type: Sequelize.JSONB,
+    },
   },
   {
     tableName: 'telemetry',

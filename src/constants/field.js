@@ -195,4 +195,5 @@ export const TELEMETRY_FIELD = [
   "heading",
   "ignition",
   "recorded_at",
+  "location",
 ];

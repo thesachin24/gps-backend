@@ -102,6 +102,7 @@ export const saveGpsLocation = async ({
     speed: parsed.speed !== undefined ? parsed.speed : null,
     heading: parsed.heading !== undefined ? parsed.heading : null,
     ignition: parsed.ignition !== undefined ? parsed.ignition : null,
+    location: location || null,
     source: source || parsed.source || parsed.protocol || 'gps'
   };
 
@@ -113,7 +114,8 @@ export const saveGpsLocation = async ({
       source: telemetryPayload.source,
       latitude: telemetryPayload.latitude,
       longitude: telemetryPayload.longitude,
-      recorded_at: telemetryPayload.recorded_at
+      recorded_at: telemetryPayload.recorded_at,
+      location: telemetryPayload.location
     })}`);
 
     // Create device locations
