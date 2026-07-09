@@ -175,3 +175,33 @@ export const formatSecondsToHoursAndMinutes = (seconds) => {
 
   return `${h}h ${m}m`;
 };
+
+export function formatDateTime(date = new Date(), type = 'datetime') {
+  const options = {
+    date: {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    },
+    time: {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    },
+    datetime: {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    },
+  };
+
+  return new Intl.DateTimeFormat('en-IN', {
+    ...options[type],
+    timeZone: 'Asia/Kolkata',
+  }).format(date);
+}

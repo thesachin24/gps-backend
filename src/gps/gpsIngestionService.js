@@ -1,7 +1,7 @@
 import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
 import { getDevice, getDeviceById, updateDevice } from '../dao/deviceDao';
-import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
+import { createDeviceState, createTelemetry, formatDateTime, getDeviceState, updateDeviceState } from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
 import { NOTIFY } from '../constants';
@@ -89,7 +89,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       device_name: device.device_name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped',
       vehicle_name: device.device_asset?.asset?.name,
-      time: new Date().toISOString()
+      time: formatDateTime(new Date(), 'time')
     });
     // }
     // Send push notification to the user
