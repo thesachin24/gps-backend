@@ -85,7 +85,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     // if(ignitionOn != deviceState.ignition) {
        //Notify User
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
-      device_name: device.name,
+      device_name: device.device_name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped'
     });
     // }
