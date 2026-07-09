@@ -203,5 +203,6 @@ export function formatDateTime(date = new Date(), type = 'datetime') {
   return new Intl.DateTimeFormat('en-IN', {
     ...options[type],
     timeZone: 'Asia/Kolkata',
-  }).format(date);
+  }).format(date)
+    .replace(/\bam\b|\bpm\b/gi, (m) => m.toUpperCase());
 }
