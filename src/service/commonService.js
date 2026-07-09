@@ -253,16 +253,10 @@ export const foregroundBackgroundData = async (body, registration_id) => {
   if(registration_id){
     createOrUpdateDevice(registration_id, device_id, device_type, push_token)
   }
-  // const PAYMENT = await getAllOptions(OPTIONS.PAYMENT)
-  // const CUSTOMER_SUPPORT = await getAllOptions(OPTIONS.CUSTOMER_SUPPORT)
-  // const MAINTENANCE = await getAllOptions(OPTIONS.MAINTENANCE)
-  // const INVESTMENT = await getAllOptions(OPTIONS.INVESTMENT)
-  // const ALERT = await getAllOptions(OPTIONS.ALERT)
-  // const APP_FORCE_UPDATE = await getAllOptions(OPTIONS.APP_FORCE_UPDATE)
-  const options = await getAllOptionsDashboard()
+  // const options = await getAllOptionsDashboard()
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
-    data: options
+    data: {}
   };
 };
 
