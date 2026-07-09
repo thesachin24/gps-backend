@@ -4,6 +4,8 @@ import { getDevice, updateDevice } from '../dao/deviceDao';
 import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
+import { NOTIFY } from '../constants';
+import { _notify } from '../utils';
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -78,6 +80,17 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       updated_at: new Date()
     });
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
+
+    // Send push notification to the user
+    if(ignitionOn != deviceState.ignition) {
+       //Notify User
+    _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
+      device_name: device.name,
+      ignition_state: ignitionOn ? 'Started' : 'Stopped'
+    });
+    }
+    // Send push notification to the user
+    
     return heartbeatData;
   } catch (error) {
     logger.error(`Failed to persist heartbeat for ${deviceId}: ${error.message}`);
