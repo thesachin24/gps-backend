@@ -82,16 +82,16 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
 
     // Send push notification to the user
-    // if(ignitionOn != deviceState.ignition) {
+    if(ignitionOn != deviceState.ignition) {
        //Notify User
-       console.log(ignitionOn, deviceState.ignition)
+      //  console.log(ignitionOn, deviceState.ignition)
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
       device_name: device.device_name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped',
       vehicle_name: device.device_asset?.asset?.name,
       time: formatDateTime(new Date(), 'time')
     });
-    // }
+    }
     // Send push notification to the user
 
     return heartbeatData;
