@@ -73,6 +73,7 @@ const _notifyAll = (template, sendTo, receiver, tokens, data, event_id) => {
 }
 
 export const _notify = async (template, id, data) => {
+    console.log(id, data)
     const to = await getUser({ id }, ['id', 'name', 'phone', 'email'])
     console.log(to)
     const { name } = to

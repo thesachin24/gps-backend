@@ -84,13 +84,13 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     // Send push notification to the user
     if(ignitionOn != deviceState.ignition) {
        //Notify User
-    _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
+    void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
       device_name: device.name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped'
     });
     }
     // Send push notification to the user
-    
+
     return heartbeatData;
   } catch (error) {
     logger.error(`Failed to persist heartbeat for ${deviceId}: ${error.message}`);
