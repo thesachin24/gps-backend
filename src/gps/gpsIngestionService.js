@@ -64,6 +64,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     // gpsCourseValid from heartbeat is advisory only — overwritten by GPS packet data
     const gpsCourseValid = parsed.heartbeat?.terminalInfoDecoded?.gpsCourseValid ?? null;
     let deviceState = await getDeviceState({ device_id: device.id });
+    const ignitionState = deviceState?.ignition ?? null;
     if (!deviceState) {
       deviceState = await createDeviceState({ device_id: device.id });
     }
@@ -82,7 +83,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
 
     // Send push notification to the user
-    if(ignitionOn != deviceState.ignition) {
+    if(ignitionOn != ignitionState) {
        //Notify User
       //  console.log(ignitionOn, deviceState.ignition)
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
