@@ -88,7 +88,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
       device_name: device.device_name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped',
-      vehicle_name: device.device_asset?.name,
+      vehicle_name: device.device_asset?.asset?.name,
       time: new Date().toISOString()
     });
     // }
