@@ -259,10 +259,10 @@ export const foregroundBackgroundData = async (body, registration_id) => {
   // const INVESTMENT = await getAllOptions(OPTIONS.INVESTMENT)
   // const ALERT = await getAllOptions(OPTIONS.ALERT)
   // const APP_FORCE_UPDATE = await getAllOptions(OPTIONS.APP_FORCE_UPDATE)
-  // const options = await getAllOptionsDashboard()
+  const options = await getAllOptionsDashboard()
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
-    data: {}
+    data: options
   };
 };
 
