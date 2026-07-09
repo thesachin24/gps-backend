@@ -84,7 +84,8 @@ export const sendPush = async params => {
     console.log("=================================");
     console.log("FCM SENT");
     console.log("TEMPLATE:", template);
-    console.log("DATA:", title, body, data);
+    console.log("TITLE:", title);
+    console.log("BODY:", body);
     console.log("SUCCESS:", response.successCount);
     console.log("FAILURE:", response.failureCount);
     console.log("=================================");
