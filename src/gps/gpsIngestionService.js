@@ -1,6 +1,6 @@
 import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
-import { getDevice, updateDevice } from '../dao/deviceDao';
+import { getDevice, getDeviceById, updateDevice } from '../dao/deviceDao';
 import { createDeviceState, createTelemetry, getDeviceState, updateDeviceState } from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
@@ -28,7 +28,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     return null;
   }
 
-  const device = await getDevice({ device_id: deviceId, is_active: true });
+  const device = await getDeviceById({ device_id: deviceId, is_active: true });
   if (!device) {
     logger.info(`Skipping heartbeat persist, device not mapped for ${deviceId}`);
     return null;
@@ -84,9 +84,11 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     // Send push notification to the user
     // if(ignitionOn != deviceState.ignition) {
        //Notify User
+       console.log('DEVICE:----------->', device);
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
       device_name: device.device_name,
-      ignition_state: ignitionOn ? 'Started' : 'Stopped'
+      ignition_state: ignitionOn ? 'Started' : 'Stopped',
+      vehicle_name: device.device_asset.asset.name
     });
     // }
     // Send push notification to the user

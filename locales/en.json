@@ -1,7 +1,7 @@
 {
 	"IGNITION_STATE_CHANGED": {
-  		"SUBJECT": "{{device_name}} engine is now {{ignition_state}}",
-  		"NOTIFICATION": "The engine for {{device_name}} is now {{ignition_state}}"
+  		"SUBJECT":  "{{vehicle_name}} • Engine {{ignition_state}}",
+  		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} engine has {{ignition_state}}."
 	},
 	"OTP_CONFIRM": {
 		"SMS": " <#> Please use OTP {{verification_code}} to login to your GPS account - Ohhk2MMRcEd"
