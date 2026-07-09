@@ -101,7 +101,9 @@ export const _notify = async (template, id, data) => {
             }
             variables = {
                 device_name: data.device_name,
-                ignition_state: data.ignition_state
+                ignition_state: data.ignition_state,
+                time: data.time,
+                vehicle_name: data.vehicle_name
             } 
             _notifyAll(template, sendTo, to, tokens, variables, data.device_id)
             break;
