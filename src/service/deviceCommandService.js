@@ -33,7 +33,10 @@ export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, u
   }
 
   const resolvedCommand = resolveCommand(command);
-
+console.log('resolvedCommand', resolvedCommand);
+console.log('deviceDbId', deviceDbId);
+console.log('deviceStringId', deviceStringId);
+console.log('userId', userId);
   // Look up device in DB for ownership checks
   const device = await getDevice({ id: deviceDbId, is_active: true });
   if (!device) {
