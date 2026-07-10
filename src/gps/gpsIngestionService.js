@@ -84,7 +84,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
 
     // Send push notification to the user
     //  console.log(ignitionOn, ignitionState, device.owner_id)
-    if(ignitionOn != ignitionState) {
+    // if(ignitionOn != ignitionState) {
        //Notify User
       //  console.log(ignitionOn, deviceState.ignition)
     void _notify(NOTIFY.IGNITION_STATE_CHANGED, device.owner_id, {
