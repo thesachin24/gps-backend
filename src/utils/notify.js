@@ -14,6 +14,11 @@ import { sendPush } from './firebase';
 
 
 const _notifyAll = (template, sendTo, receiver, tokens, data, event_id) => {
+    console.log(sendTo,"sendTo,,,,")
+    console.log(receiver,"receiver,,,,")
+    console.log(tokens,"tokens,,,,")
+    console.log(data,"data,,,,")
+    console.log(event_id,"event_id,,,,")
     const { phone, email, registration_id } = receiver
     const { isEmail, isPush, isSms, isTelegram, isWhatsApp } = sendTo
     //Send Email
