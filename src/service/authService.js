@@ -139,7 +139,6 @@ export const userLogin = async body => {
     body.otp = otp;
     body.referral_code =  generateReferralCode(8);
     body.date_joined = new Date();
-    console.log(body,"body,,,,")
     user = await createUser(body);
   //  await createProfessional({
   //   user_id: user.id
