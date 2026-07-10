@@ -83,6 +83,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
 
     // Send push notification to the user
+     console.log(ignitionOn, deviceState.ignition)
     if(ignitionOn != ignitionState) {
        //Notify User
       //  console.log(ignitionOn, deviceState.ignition)
