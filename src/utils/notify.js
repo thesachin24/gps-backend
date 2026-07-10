@@ -77,7 +77,7 @@ export const _notify = async (template, id, data) => {
     // console.log(to,"to,,,,")
     const { name } = to
     const tokens = await getAllUserDeviceTokens(id)
-    console.log(tokens,"tokens,,,,")
+
     let sendTo = {
         isEmail: false,
         isWhatsApp: false,

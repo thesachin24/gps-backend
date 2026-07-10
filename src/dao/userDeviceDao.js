@@ -6,7 +6,7 @@ export const getUserDevice = async filters =>
 export const getAllUserDeviceTokens = async (user_id) => {
   return userDevice.findAll({
     attributes: ['push_token'],
-    where: { user_id }, raw: true
+    where: { user_id, push_token: { [Op.ne]: null } }, raw: true
   }).map(t => t.push_token);
 }
 
