@@ -74,9 +74,10 @@ const _notifyAll = (template, sendTo, receiver, tokens, data, event_id) => {
 
 export const _notify = async (template, id, data) => {
     const to = await getUser({ id }, ['id', 'name', 'phone', 'email'])
-    console.log(to,"to,,,,")
+    // console.log(to,"to,,,,")
     const { name } = to
     const tokens = await getAllUserDeviceTokens(id)
+    console.log(tokens,"tokens,,,,")
     let sendTo = {
         isEmail: false,
         isWhatsApp: false,
