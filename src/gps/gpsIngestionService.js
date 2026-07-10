@@ -91,7 +91,8 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       device_name: device.device_name,
       ignition_state: ignitionOn ? 'Started' : 'Stopped',
       vehicle_name: device.device_asset?.asset?.name,
-      time: formatDateTime(new Date(), 'time')
+      time: formatDateTime(new Date(), 'time'),
+      device_id: device.id
     });
     }
     // Send push notification to the user
