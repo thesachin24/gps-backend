@@ -1,4 +1,5 @@
 import userDevice from '../models/userDevice';
+import { Op } from 'sequelize';
 
 export const getUserDevice = async filters =>
   userDevice.findOne({ where: filters, raw: true });
