@@ -18,6 +18,10 @@ export const sendPush = async params => {
       event_id = "",
     } = params;
 
+    console.log(tokens,"tokens,,,,")
+    console.log(template,"template,,,,")
+    console.log(data,"data,,,,")
+    console.log(event_id,"event_id,,,,")
     /**
      * Validate Tokens
      */
