@@ -164,7 +164,7 @@ export const saveGpsLocation = async ({
       longitude: toFixedCoordinate(parsed.longitude),
       speed: parsed.speed !== undefined ? parsed.speed : null,
       heading: parsed.heading !== undefined ? parsed.heading : null,
-      ignition: parsed.ignition !== undefined ? parsed.ignition : null,
+      // ignition: parsed.ignition !== undefined ? parsed.ignition : null,
       gps_fixed: parsed.courseStatusFlags?.gpsFixed ?? parsed.gpsFixed ?? null,
       satellites: parsed.satellites !== undefined ? parsed.satellites : null,
       address: address || null,
