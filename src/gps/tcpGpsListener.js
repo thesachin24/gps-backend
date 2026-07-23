@@ -294,11 +294,11 @@ class GpsTcpListener {
     }
 
     if (parsed?.type === 'relay_event') {
-      void handleRelayEvent({ deviceId, parsed });
+      // void handleRelayEvent({ deviceId, parsed });
     }
 
     if (parsed?.deviceStatus) {
-      void handleDeviceStatus({ deviceId, parsed });
+      // void handleDeviceStatus({ deviceId, parsed });
     }
 
     if (parsed?.type === 'lbs_report') {
