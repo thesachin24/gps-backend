@@ -33,6 +33,8 @@ export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, u
   }
 
   const resolvedCommand = resolveCommand(command);
+  console.log('command', command);
+  console.log('resolvedCommand', resolvedCommand);
 
   // Look up device in DB for ownership checks
   const device = await getDevice({ id: deviceDbId, is_active: true });
@@ -45,7 +47,8 @@ export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, u
 
   const serial = nextSerial();
   const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
-
+  console.log('packetHex', packetHex);
+  console.log('serverFlagHex', serverFlagHex);
   // Create command log first (status = pending)
   const record = await createDeviceCommand({
     device_id: deviceDbId,
