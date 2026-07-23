@@ -290,7 +290,7 @@ class GpsTcpListener {
     }
 
     if (parsed?.commandResponse) {
-      void handleCommandResponse({ deviceId, parsed });
+      // void handleCommandResponse({ deviceId, parsed });
     }
 
     if (parsed?.type === 'relay_event') {
