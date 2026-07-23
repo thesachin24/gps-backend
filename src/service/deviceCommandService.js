@@ -27,31 +27,127 @@ const resolveCommand = command => {
   return aliasMap[String(command).toLowerCase()] || String(command).trim();
 };
 
-export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, userId }) => {
-  if (!deviceStringId || !command) {
-    throw new CustomError(UN_PROCESSABLE_ENTITY, 'deviceStringId and command are required.');
+// export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, userId }) => {
+//   if (!deviceStringId || !command) {
+//     throw new CustomError(UN_PROCESSABLE_ENTITY, 'deviceStringId and command are required.');
+//   }
+
+//   const resolvedCommand = resolveCommand(command);
+//   console.log('command', command);
+//   console.log('resolvedCommand', resolvedCommand);
+
+//   // Look up device in DB for ownership checks
+//   const device = await getDevice({ id: deviceDbId, is_active: true });
+//   if (!device) {
+//     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
+//   }
+//   if (userId && device.owner_id !== userId) {
+//     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
+//   }
+
+//   const serial = nextSerial();
+//   const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
+//   console.log('packetHex', packetHex);
+//   console.log('serverFlagHex', serverFlagHex);
+//   // Create command log first (status = pending)
+//   const record = await createDeviceCommand({
+//     device_id: deviceDbId,
+//     device_string_id: deviceStringId,
+//     command: resolvedCommand,
+//     status: COMMAND_STATUS.PENDING,
+//     server_flag: serverFlagHex,
+//     serial
+//   });
+
+//   // Try to dispatch over active TCP socket
+//   const socket = getSocket(deviceStringId);
+//   if (!socket) {
+//     await updateDeviceCommand(record, {
+//       status: COMMAND_STATUS.FAILED,
+//       error: 'Device is offline. No active TCP connection.',
+//       sent_at: new Date()
+//     });
+//     throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
+//   }
+
+//   try {
+//     await new Promise((resolve, reject) => {
+//       socket.write(Buffer.from(packetHex, 'hex'), err => (err ? reject(err) : resolve()));
+//     });
+//     await updateDeviceCommand(record, {
+//       status: COMMAND_STATUS.SENT,
+//       sent_at: new Date()
+//     });
+//     logger.info(`Command sent to ${deviceStringId}: ${resolvedCommand} (serial=${serial}, flag=${serverFlagHex})`);
+//   } catch (err) {
+//     await updateDeviceCommand(record, {
+//       status: COMMAND_STATUS.FAILED,
+//       error: err.message,
+//       sent_at: new Date()
+//     });
+//     throw new CustomError(SERVER_ERROR, `Failed to send command: ${err.message}`);
+//   }
+
+//   return {
+//     message: MESSAGE_CONSTANTS.SUCCESS,
+//     data: {
+//       id: record.id,
+//       command: resolvedCommand,
+//       status: 'sent',
+//       server_flag: serverFlagHex,
+//       serial,
+//       sent_at: record.sent_at || new Date()
+//     }
+//   };
+// };
+
+
+export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
+  if (!deviceDbId || !command) {
+    throw new CustomError(
+      UN_PROCESSABLE_ENTITY,
+      'deviceId and command are required.'
+    );
   }
 
-  const resolvedCommand = resolveCommand(command);
-  console.log('command', command);
-  console.log('resolvedCommand', resolvedCommand);
+  // Get device
+  const device = await getDevice({
+    id: deviceDbId,
+    is_active: true
+  });
 
-  // Look up device in DB for ownership checks
-  const device = await getDevice({ id: deviceDbId, is_active: true });
   if (!device) {
-    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
+    throw new CustomError(
+      NOT_FOUND,
+      MESSAGE_CONSTANTS.DEVICE_NOT_FOUND
+    );
   }
+
+  // Ownership check
   if (userId && device.owner_id !== userId) {
-    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
+    throw new CustomError(
+      FORBIDDEN,
+      MESSAGE_CONSTANTS.ACCESS_DENIED
+    );
   }
+
+  // Always use device identifier from DB
+  const deviceStringId = device.device_id;
+
+  // Resolve GT06 command
+  const resolvedCommand = resolveCommand(command);
 
   const serial = nextSerial();
-  const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
-  console.log('packetHex', packetHex);
-  console.log('serverFlagHex', serverFlagHex);
-  // Create command log first (status = pending)
+  const sentAt = new Date();
+
+  const {
+    hex: packetHex,
+    serverFlagHex
+  } = buildGt06CommandPacket(resolvedCommand, serial);
+
+  // Create pending command
   const record = await createDeviceCommand({
-    device_id: deviceDbId,
+    device_id: device.id,
     device_string_id: deviceStringId,
     command: resolvedCommand,
     status: COMMAND_STATUS.PENDING,
@@ -59,46 +155,64 @@ export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, u
     serial
   });
 
-  // Try to dispatch over active TCP socket
+  // Get active socket
   const socket = getSocket(deviceStringId);
-  if (!socket) {
+
+  if (!socket || socket.destroyed || !socket.writable) {
     await updateDeviceCommand(record, {
       status: COMMAND_STATUS.FAILED,
-      error: 'Device is offline. No active TCP connection.',
-      sent_at: new Date()
+      sent_at: sentAt,
+      error: 'Device is offline.'
     });
-    throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
+
+    throw new CustomError(
+      503,
+      `Device ${deviceStringId} is currently offline.`
+    );
   }
 
   try {
     await new Promise((resolve, reject) => {
-      socket.write(Buffer.from(packetHex, 'hex'), err => (err ? reject(err) : resolve()));
+      socket.write(
+        Buffer.from(packetHex, 'hex'),
+        err => (err ? reject(err) : resolve())
+      );
     });
+
     await updateDeviceCommand(record, {
       status: COMMAND_STATUS.SENT,
-      sent_at: new Date()
+      sent_at: sentAt
     });
-    logger.info(`Command sent to ${deviceStringId}: ${resolvedCommand} (serial=${serial}, flag=${serverFlagHex})`);
+
+    logger.info(
+      `GT06 command sent. device=${deviceStringId}, command=${resolvedCommand}, serial=${serial}`
+    );
+
+    return {
+      message: MESSAGE_CONSTANTS.SUCCESS,
+      data: {
+        id: record.id,
+        device_id: device.id,
+        device_string_id: deviceStringId,
+        command: resolvedCommand,
+        status: COMMAND_STATUS.SENT,
+        serial,
+        server_flag: serverFlagHex,
+        sent_at: sentAt
+      }
+    };
   } catch (err) {
     await updateDeviceCommand(record, {
       status: COMMAND_STATUS.FAILED,
-      error: err.message,
-      sent_at: new Date()
+      sent_at: sentAt,
+      error: err.message
     });
-    throw new CustomError(SERVER_ERROR, `Failed to send command: ${err.message}`);
-  }
 
-  return {
-    message: MESSAGE_CONSTANTS.SUCCESS,
-    data: {
-      id: record.id,
-      command: resolvedCommand,
-      status: 'sent',
-      server_flag: serverFlagHex,
-      serial,
-      sent_at: record.sent_at || new Date()
-    }
-  };
+    throw new CustomError(
+      SERVER_ERROR,
+      `Failed to send command: ${err.message}`
+    );
+  }
 };
 
 export const listDeviceCommands = async ({ deviceDbId, page, limit }) => {
