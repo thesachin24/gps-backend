@@ -15,137 +15,57 @@ const nextSerial = () => {
 };
 
 /**
- * Resolve friendly alias (e.g. "relay_on") to the raw GT06 ASCII command string.
+ * Resolve a friendly command alias to the raw GT06 ASCII command string.
+ *
+ * GT06 relay semantics (standard engine-cut wiring):
+ *   RELAY,1  →  Activate relay   →  Engine CUT      (scooter immobilised)
+ *   RELAY,0  →  Deactivate relay  →  Engine RESTORED (scooter can move)
  */
 const resolveCommand = command => {
   const aliasMap = {
-    [COMMAND_ALIASES.RELAY_ON]: 'RELAY,1',
-    [COMMAND_ALIASES.RELAY_OFF]: 'RELAY,0',
+    [COMMAND_ALIASES.RELAY_ON]:  'RELAY,1',  // cut engine
+    [COMMAND_ALIASES.RELAY_OFF]: 'RELAY,0',  // restore engine
     relay1: 'RELAY,1',
     relay0: 'RELAY,0'
   };
   return aliasMap[String(command).toLowerCase()] || String(command).trim();
 };
 
-// export const sendDeviceCommand = async ({ deviceDbId, deviceStringId, command, userId }) => {
-//   if (!deviceStringId || !command) {
-//     throw new CustomError(UN_PROCESSABLE_ENTITY, 'deviceStringId and command are required.');
-//   }
-
-//   const resolvedCommand = resolveCommand(command);
-//   console.log('command', command);
-//   console.log('resolvedCommand', resolvedCommand);
-
-//   // Look up device in DB for ownership checks
-//   const device = await getDevice({ id: deviceDbId, is_active: true });
-//   if (!device) {
-//     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
-//   }
-//   if (userId && device.owner_id !== userId) {
-//     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
-//   }
-
-//   const serial = nextSerial();
-//   const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
-//   console.log('packetHex', packetHex);
-//   console.log('serverFlagHex', serverFlagHex);
-//   // Create command log first (status = pending)
-//   const record = await createDeviceCommand({
-//     device_id: deviceDbId,
-//     device_string_id: deviceStringId,
-//     command: resolvedCommand,
-//     status: COMMAND_STATUS.PENDING,
-//     server_flag: serverFlagHex,
-//     serial
-//   });
-
-//   // Try to dispatch over active TCP socket
-//   const socket = getSocket(deviceStringId);
-//   if (!socket) {
-//     await updateDeviceCommand(record, {
-//       status: COMMAND_STATUS.FAILED,
-//       error: 'Device is offline. No active TCP connection.',
-//       sent_at: new Date()
-//     });
-//     throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
-//   }
-
-//   try {
-//     await new Promise((resolve, reject) => {
-//       socket.write(Buffer.from(packetHex, 'hex'), err => (err ? reject(err) : resolve()));
-//     });
-//     await updateDeviceCommand(record, {
-//       status: COMMAND_STATUS.SENT,
-//       sent_at: new Date()
-//     });
-//     logger.info(`Command sent to ${deviceStringId}: ${resolvedCommand} (serial=${serial}, flag=${serverFlagHex})`);
-//   } catch (err) {
-//     await updateDeviceCommand(record, {
-//       status: COMMAND_STATUS.FAILED,
-//       error: err.message,
-//       sent_at: new Date()
-//     });
-//     throw new CustomError(SERVER_ERROR, `Failed to send command: ${err.message}`);
-//   }
-
-//   return {
-//     message: MESSAGE_CONSTANTS.SUCCESS,
-//     data: {
-//       id: record.id,
-//       command: resolvedCommand,
-//       status: 'sent',
-//       server_flag: serverFlagHex,
-//       serial,
-//       sent_at: record.sent_at || new Date()
-//     }
-//   };
-// };
-
-
+/**
+ * Send a GT06 command to a device over its active TCP socket.
+ *
+ * Flow:
+ *   1. Validate + resolve the command alias
+ *   2. Look up the device (ownership check)
+ *   3. Build the 0x80 GT06 binary packet
+ *   4. Log the command as PENDING in device_commands
+ *   5. Write the packet to the device's live TCP socket
+ *   6. Mark the command SENT (or FAILED on error)
+ *
+ * The device will reply with a 0x17 ACK packet that handleCommandResponse
+ * picks up and marks the record as ACKNOWLEDGED.
+ */
 export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
   if (!deviceDbId || !command) {
-    throw new CustomError(
-      UN_PROCESSABLE_ENTITY,
-      'deviceId and command are required.'
-    );
+    throw new CustomError(UN_PROCESSABLE_ENTITY, 'deviceId and command are required.');
   }
 
-  // Get device
-  const device = await getDevice({
-    id: deviceDbId,
-    is_active: true
-  });
-
+  const device = await getDevice({ id: deviceDbId, is_active: true });
   if (!device) {
-    throw new CustomError(
-      NOT_FOUND,
-      MESSAGE_CONSTANTS.DEVICE_NOT_FOUND
-    );
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
   }
-
-  // Ownership check
   if (userId && device.owner_id !== userId) {
-    throw new CustomError(
-      FORBIDDEN,
-      MESSAGE_CONSTANTS.ACCESS_DENIED
-    );
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
   }
 
-  // Always use device identifier from DB
   const deviceStringId = device.device_id;
-
-  // Resolve GT06 command
   const resolvedCommand = resolveCommand(command);
-
   const serial = nextSerial();
   const sentAt = new Date();
 
-  const {
-    hex: packetHex,
-    serverFlagHex
-  } = buildGt06CommandPacket(resolvedCommand, serial);
+  const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
 
-  // Create pending command
+  // Log as PENDING before touching the socket
   const record = await createDeviceCommand({
     device_id: device.id,
     device_string_id: deviceStringId,
@@ -155,38 +75,26 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
     serial
   });
 
-  // Get active socket
+  // Check that the device is online
   const socket = getSocket(deviceStringId);
-
   if (!socket || socket.destroyed || !socket.writable) {
     await updateDeviceCommand(record, {
       status: COMMAND_STATUS.FAILED,
       sent_at: sentAt,
       error: 'Device is offline.'
     });
-
-    throw new CustomError(
-      503,
-      `Device ${deviceStringId} is currently offline.`
-    );
+    throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
   }
 
+  // Write to the TCP socket (one-way; device ACKs separately via 0x17)
   try {
     await new Promise((resolve, reject) => {
-      socket.write(
-        Buffer.from(packetHex, 'hex'),
-        err => (err ? reject(err) : resolve())
-      );
+      socket.write(Buffer.from(packetHex, 'hex'), err => (err ? reject(err) : resolve()));
     });
 
-    await updateDeviceCommand(record, {
-      status: COMMAND_STATUS.SENT,
-      sent_at: sentAt
-    });
+    await updateDeviceCommand(record, { status: COMMAND_STATUS.SENT, sent_at: sentAt });
 
-    logger.info(
-      `GT06 command sent. device=${deviceStringId}, command=${resolvedCommand}, serial=${serial}`
-    );
+    logger.info(`GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex}`);
 
     return {
       message: MESSAGE_CONSTANTS.SUCCESS,
@@ -202,16 +110,8 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
       }
     };
   } catch (err) {
-    await updateDeviceCommand(record, {
-      status: COMMAND_STATUS.FAILED,
-      sent_at: sentAt,
-      error: err.message
-    });
-
-    throw new CustomError(
-      SERVER_ERROR,
-      `Failed to send command: ${err.message}`
-    );
+    await updateDeviceCommand(record, { status: COMMAND_STATUS.FAILED, sent_at: sentAt, error: err.message });
+    throw new CustomError(SERVER_ERROR, `Failed to send command: ${err.message}`);
   }
 };
 
@@ -235,9 +135,9 @@ export const listDeviceCommands = async ({ deviceDbId, page, limit }) => {
 };
 
 /**
- * Called when your app sends RELAY via SMS.
- * Logs the intent immediately (status = sent) and records the relay state
- * in device_state so GET /relay-status reflects it before the 0x16 alarm arrives.
+ * Called when your app sends a RELAY command via SMS (not TCP).
+ * Logs the intent immediately so GET /relay-status reflects it before
+ * any 0x16 alarm or 0x24 status packet arrives from the device.
  */
 export const logSmsRelay = async ({ deviceDbId, deviceStringId, relayOn, note, userId }) => {
   if (typeof relayOn !== 'boolean') {
@@ -249,10 +149,9 @@ export const logSmsRelay = async ({ deviceDbId, deviceStringId, relayOn, note, u
   if (userId && device.owner_id !== userId) throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
 
   const command = relayOn ? 'RELAY,1' : 'RELAY,0';
-
   const record = await createDeviceCommand({
     device_id: deviceDbId,
-    device_string_id: deviceStringId,
+    device_string_id: deviceStringId || device.device_id,
     command,
     status: COMMAND_STATUS.SENT,
     server_flag: null,
@@ -261,37 +160,28 @@ export const logSmsRelay = async ({ deviceDbId, deviceStringId, relayOn, note, u
     sent_at: new Date()
   });
 
-  logger.info(`SMS relay logged: deviceId=${deviceStringId} relay_on=${relayOn}`);
+  logger.info(`SMS relay logged: device=${deviceStringId} relay_on=${relayOn}`);
 
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
-    data: {
-      id: record.id,
-      command,
-      relay_on: relayOn,
-      status: COMMAND_STATUS.SENT,
-      note: note || null
-    }
+    data: { id: record.id, command, relay_on: relayOn, status: COMMAND_STATUS.SENT, note: note || null }
   };
 };
 
 export const getDeviceCommandDetail = async ({ commandId, deviceDbId }) => {
   const record = await getDeviceCommand({ id: commandId, device_id: deviceDbId });
-  if (!record) {
-    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
-  }
+  if (!record) throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   return { message: MESSAGE_CONSTANTS.SUCCESS, data: record };
 };
 
 /**
- * Derive the relay state from the last acknowledged RELAY command.
- * More reliable than reading the heartbeat terminalInfo `armed` bit because
- * most GT06 devices don't reflect the relay output state in heartbeats.
+ * Returns the relay state based on the last *acknowledged* RELAY command.
+ * This is more reliable than the heartbeat terminalInfo armed-bit because
+ * many GT06 clones do not reflect the relay output in heartbeats.
  *
- * Returns:
- *   { relay_on: true }  — last acked command was RELAY,1
- *   { relay_on: false } — last acked command was RELAY,0
- *   { relay_on: null }  — no acknowledged relay command on record
+ * relay_on: true  → last acked command was RELAY,1 (engine cut)
+ * relay_on: false → last acked command was RELAY,0 (engine restored)
+ * relay_on: null  → no acknowledged relay command on record yet
  */
 export const getRelayStatus = async ({ deviceDbId, deviceStringId }) => {
   const record = await getLastAcknowledgedRelayCommand(deviceStringId);

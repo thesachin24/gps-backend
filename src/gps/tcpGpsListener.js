@@ -1,11 +1,22 @@
 import net from 'net';
 import logger from '../config/logger';
-import { parseGpsPayload } from './gpsPayloadParser';
+import { parseGpsPayload, buildGt06AckHex } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
 import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
 import { getDevice } from '../dao';
 import axios from 'axios';
+
+// CRC-16/ITU (same poly as the parser — kept local so the listener has no
+// circular dependency on gpsPayloadParser for the hot login-ACK path)
+const crc16Itu = bytes => {
+  let crc = 0xffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) crc = crc & 1 ? (crc >> 1) ^ 0x8408 : crc >> 1;
+  }
+  return (~crc) & 0xffff;
+};
 
 const toBoolean = value => {
   if (value === undefined || value === null) {
@@ -290,15 +301,15 @@ class GpsTcpListener {
     }
 
     if (parsed?.commandResponse) {
-      // void handleCommandResponse({ deviceId, parsed });
+      void handleCommandResponse({ deviceId, parsed });
     }
 
     if (parsed?.type === 'relay_event') {
-      // void handleRelayEvent({ deviceId, parsed });
+      void handleRelayEvent({ deviceId, parsed });
     }
 
     if (parsed?.deviceStatus) {
-      // void handleDeviceStatus({ deviceId, parsed });
+      void handleDeviceStatus({ deviceId, parsed });
     }
 
     if (parsed?.type === 'lbs_report') {
@@ -336,25 +347,43 @@ class GpsTcpListener {
 
           // console.log('RAW HEX:', hex);
         
-          // Login packet
+          // Login packet — send a proper ACK with dynamically computed CRC
+          // if (hex.startsWith('7878') && hex.substr(6, 2) === '01') {
+          //   console.log('LOGIN PACKET RECEIVED');
+        
+          //   // Serial number (2 bytes before CRC)
+          //   const serial = hex.substring(hex.length - 12, hex.length - 8);
+        
+          //   // console.log('Serial:', serial);
+        
+          //   // Temporary ACK
+          //   const ack = Buffer.from(
+          //     `78780501${serial}d9dc0d0a`,
+          //     'hex'
+          //   );
+        
+          //   socket.write(ack);
+          //   logger.info(`GPS TCP login ACK sent to ${remote} serial=${serialHex}`);
+          // }
+
+          //NEW LOGIN PACKET
+          // Login packet — send a proper ACK with dynamically computed CRC
           if (hex.startsWith('7878') && hex.substr(6, 2) === '01') {
-            console.log('LOGIN PACKET RECEIVED');
-        
-            // Serial number (2 bytes before CRC)
-            const serial = hex.substring(hex.length - 12, hex.length - 8);
-        
-            // console.log('Serial:', serial);
-        
-            // Temporary ACK
-            const ack = Buffer.from(
-              `78780501${serial}d9dc0d0a`,
-              'hex'
-            );
-        
+            const serialHex = hex.substring(hex.length - 12, hex.length - 8);
+            const serialHi = parseInt(serialHex.substring(0, 2), 16);
+            const serialLo = parseInt(serialHex.substring(2, 4), 16);
+            const ackBody = Buffer.from([0x05, 0x01, serialHi, serialLo]);
+            const crc = crc16Itu(ackBody);
+            const ack = Buffer.concat([
+              Buffer.from([0x78, 0x78]),
+              ackBody,
+              Buffer.from([(crc >> 8) & 0xff, crc & 0xff, 0x0d, 0x0a])
+            ]);
             socket.write(ack);
-        
-            // console.log('LOGIN ACK SENT:', ack.toString('hex'));
+            logger.info(`GPS TCP login ACK sent to ${remote} serial=${serialHex}`);
           }
+          //NEW LOGIN PACKET
+          
           socket._gpsBuffer = Buffer.concat([socket._gpsBuffer || Buffer.alloc(0), chunk]);
 
           // Safety guard for malformed noisy streams.
