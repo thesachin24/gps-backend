@@ -26,12 +26,12 @@ const Geofence = sequelize.define(
     // Defines the business purpose of the geofence
     type: {
       type: Sequelize.ENUM(
-        "REGULAR",
-        "SAFE_ZONE",
-        "NO_ENTRY",
+        GEOFENCE_TYPE.REGULAR_ZONE,
+        GEOFENCE_TYPE.SAFE_ZONE,
+        GEOFENCE_TYPE.NO_ENTRY_ZONE,
       ),
       allowNull: false,
-      defaultValue: "REGULAR",
+      defaultValue: GEOFENCE_TYPE.REGULAR_ZONE,
     },
 
     // Shape of the geofence
@@ -71,7 +71,7 @@ const Geofence = sequelize.define(
         Object.values(GEOFENCE_TYPE),
       ),
       allowNull: false,
-      defaultValue: GEOFENCE_TYPE.REGULAR,
+      defaultValue: GEOFENCE_TYPE.REGULAR_ZONE,
     },
 
     is_active: {

@@ -3,7 +3,7 @@
  */
 import Joi from 'joi';
 
-const GEOFENCE_TYPES = ['REGULAR', 'SAFE_ZONE', 'NO_ENTRY'];
+const GEOFENCE_TYPES = ['REGULAR_ZONE', 'SAFE_ZONE', 'NO_ENTRY_ZONE'];
 
 export const geofence = {
   getGeofenceList: {

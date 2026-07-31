@@ -185,9 +185,9 @@ export const EVENT = Object.freeze({
 
 export const GEOFENCE_TYPE = Object.freeze({
   // Geofence Type
-  REGULAR: 'REGULAR',
+  REGULAR_ZONE: 'REGULAR_ZONE',
   SAFE_ZONE: 'SAFE_ZONE',
-  NO_ENTRY: 'NO_ENTRY',
+  NO_ENTRY_ZONE: 'NO_ENTRY_ZONE',
 });
 
 export const SPEED_TYPE = Object.freeze({
