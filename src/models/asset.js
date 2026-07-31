@@ -28,6 +28,10 @@ const Asset = sequelize.define(
       ),
       allowNull: false,
     },
+    speed_limit: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+    },
     // Example: Office Car, Personal Car, etc.
     name: {
       type: Sequelize.STRING,

@@ -175,6 +175,7 @@ export const ASSET_FIELD = [
   "id",
   "user_id",
   "type",
+  "speed_limit",
   "name",
   "registration_number",
   "make",
@@ -209,4 +210,17 @@ export const GEOFENCE_FIELD = [
   "is_active",
   "created_at",
   "updated_at"
+];
+
+export const EVENT_FIELD = [
+  "id",
+  "user_id",
+  "asset_id",
+  "device_id",
+  "type",
+  "latitude",
+  "longitude",
+  "metadata",
+  "event_at",
+  "created_at"
 ];

@@ -12,3 +12,4 @@ export * from './deviceAssetMapDao';
 export * from './deviceCommandDao';
 export * from './geofenceDao';
 export * from './assetGeofenceMapDao';
+export * from './eventDao';

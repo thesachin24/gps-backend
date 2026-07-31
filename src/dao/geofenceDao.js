@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { GEOFENCE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
 import geofenceModel from '../models/geofence';
 
@@ -21,6 +22,18 @@ export const getGeofenceById = filters =>
     attributes: GEOFENCE_FIELD,
     where: filters
   });
+
+export const getGeofencesByIds = (ids, filters = {}) => {
+  if (!ids?.length) return Promise.resolve([]);
+  return geofenceModel.findAll({
+    attributes: GEOFENCE_FIELD,
+    where: {
+      id: { [Op.in]: ids },
+      is_active: true,
+      ...filters
+    }
+  });
+};
 
 export const createGeofence = payload =>
   geofenceModel.build(payload).save();

@@ -17,6 +17,7 @@ export const asset = {
   createAsset: {
     body: {
       type: Joi.string().valid(...ASSET_TYPES).required(),
+      speed_limit: Joi.number().integer().positive().optional().allow('', null),
       name: Joi.string().trim().optional().allow('', null),
       registration_number: Joi.string().trim().optional().allow('', null),
       make: Joi.string().trim().optional().allow('', null),
@@ -31,6 +32,7 @@ export const asset = {
     },
     body: {
       type: Joi.string().valid(...ASSET_TYPES).optional(),
+      speed_limit: Joi.number().integer().positive().optional().allow('', null),
       name: Joi.string().trim().optional().allow('', null),
       registration_number: Joi.string().trim().optional().allow('', null),
       make: Joi.string().trim().optional().allow('', null),

@@ -86,19 +86,10 @@ export const getAssetDetail = async (id, user_id) => {
 };
 
 export const createAssets = async (payload, user_id) => {
-  const row = {
-    user_id,
-    type: payload.type,
-    name: payload.name != null ? payload.name : null,
-    registration_number: payload.registration_number != null ? payload.registration_number : null,
-    make: payload.make != null ? payload.make : null,
-    model: payload.model != null ? payload.model : null,
-    color: payload.color != null ? payload.color : null,
-    metadata: payload.metadata != null ? payload.metadata : null
-  };
+  payload.user_id = user_id;
 
   try {
-    const created = await createAsset(row);
+    const created = await createAsset(payload);
     return {
       message: MESSAGE_CONSTANTS.ASSET_CREATE_SUCCESS,
       data: created

@@ -5,5 +5,10 @@
 	},
 	"OTP_CONFIRM": {
 		"SMS": " <#> Please use OTP {{verification_code}} to login to your GPS account - Ohhk2MMRcEd"
+	},
+	"EVENT_OCCURRED": {
+		"SUBJECT": "{{vehicle_name}} • {{event_title}}",
+		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} has {{event_body}} at {{time}}."
 	}
 }
+	

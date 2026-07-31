@@ -143,6 +143,7 @@ export const MATRIMONIAL_REQUEST_STATUS = Object.freeze({
 export const NOTIFY = Object.freeze({
   IGNITION_STATE_CHANGED: "IGNITION_STATE_CHANGED",
   OTP_CONFIRM: "OTP_CONFIRM",
+  EVENT_OCCURRED: "EVENT_OCCURRED",
 });
 
 export const BANNER_TYPE = Object.freeze({

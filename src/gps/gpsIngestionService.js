@@ -1,11 +1,58 @@
 import logger from '../config/logger';
 import { createDeviceLocation } from '../dao/deviceLocationDao';
 import { getDevice, getDeviceById, updateDevice } from '../dao/deviceDao';
-import { createDeviceState, createTelemetry, formatDateTime, getDeviceState, updateDeviceState } from '../dao';
+import {
+  createDeviceState,
+  createEvent,
+  createTelemetry,
+  formatDateTime,
+  getAllAssetGeofenceMapList,
+  getDeviceState,
+  getGeofencesByIds,
+  updateDeviceState
+} from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
-import { NOTIFY } from '../constants';
+import { EVENT, NOTIFY } from '../constants';
 import { _notify } from '../utils';
+
+const EARTH_RADIUS_M = 6371000;
+
+const EVENT_COPY = Object.freeze({
+  [EVENT.OVERSPEED]: {
+    title: 'Overspeed',
+    body: 'exceeded the speed limit'
+  },
+  [EVENT.GEOFENCE_ENTER]: {
+    title: 'Geofence Enter',
+    body: 'entered a geofence'
+  },
+  [EVENT.GEOFENCE_EXIT]: {
+    title: 'Geofence Exit',
+    body: 'exited a geofence'
+  }
+});
+
+const toRadians = deg => (deg * Math.PI) / 180;
+
+const haversineMeters = (lat1, lon1, lat2, lon2) => {
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return EARTH_RADIUS_M * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const isInsideCircleGeofence = (latitude, longitude, geofence) => {
+  const centerLat = Number(geofence.center_latitude);
+  const centerLon = Number(geofence.center_longitude);
+  const radius = Number(geofence.radius);
+  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLon) || !Number.isFinite(radius) || radius <= 0) {
+    return false;
+  }
+  return haversineMeters(latitude, longitude, centerLat, centerLon) <= radius;
+};
 
 const parseDateOrFallback = (value, fallback = null) => {
   if (!value) {
@@ -104,6 +151,134 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
   }
 };
 
+const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadata }) => {
+  await createEvent({
+    user_id: asset.user_id || device.owner_id,
+    asset_id: asset.id,
+    device_id: device.id,
+    type,
+    latitude: telemetryPayload.latitude,
+    longitude: telemetryPayload.longitude,
+    metadata: metadata || null,
+    event_at: telemetryPayload.recorded_at || new Date()
+  });
+
+  const eventCopy = EVENT_COPY[type] || { title: type, body: type };
+  void _notify(NOTIFY.EVENT_OCCURRED, device.owner_id, {
+    device_name: device.device_name,
+    event_title: eventCopy.title,
+    event_body: eventCopy.body,
+    vehicle_name: asset.name,
+    time: formatDateTime(new Date(), 'time'),
+    device_id: device.id
+  });
+
+  logger.info(`Event emitted: deviceId=${device.id} type=${type}`);
+};
+
+/**
+ * Edge-triggered event detection for OVERSPEED / GEOFENCE_ENTER / GEOFENCE_EXIT.
+ * First GPS fix only seeds state (no events). Later fixes fire only on transitions.
+ * Returns the next events snapshot to persist on device_state.metadata.events.
+ */
+const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState) => {
+  const asset = device.device_asset?.asset;
+  const emptyState = { overspeeding: false, active_geofence_ids: [] };
+  const prevEvents = deviceState?.metadata?.events;
+
+  if (!asset?.id || !Number.isFinite(Number(telemetryPayload.latitude)) || !Number.isFinite(Number(telemetryPayload.longitude))) {
+    return prevEvents || emptyState;
+  }
+
+  const latitude = Number(telemetryPayload.latitude);
+  const longitude = Number(telemetryPayload.longitude);
+  const hasPriorEventState = prevEvents != null;
+  const prevOverspeeding = !!prevEvents?.overspeeding;
+  const prevGeofenceIds = new Set((prevEvents?.active_geofence_ids || []).map(Number));
+
+  // --- OVERSPEED (asset.speed_limit) ---
+  const speedLimit = Number(asset.speed_limit) || 0;
+  const speed = Number(telemetryPayload.speed);
+  const isOverspeeding = speedLimit > 0 && Number.isFinite(speed) && speed > speedLimit;
+
+  // --- GEOFENCE membership (circle: center + radius metres) ---
+  const maps = await getAllAssetGeofenceMapList({
+    asset_id: asset.id,
+    removed_at: null
+  });
+  const mappedIds = (maps?.rows || []).map(row => row.geofence_id);
+  const geofences = await getGeofencesByIds(mappedIds);
+
+  const activeGeofenceIds = [];
+  const geofenceById = new Map();
+  for (const geofence of geofences) {
+    geofenceById.set(Number(geofence.id), geofence);
+    if (isInsideCircleGeofence(latitude, longitude, geofence)) {
+      activeGeofenceIds.push(Number(geofence.id));
+    }
+  }
+  const currentGeofenceIds = new Set(activeGeofenceIds);
+
+  const nextState = {
+    overspeeding: isOverspeeding,
+    active_geofence_ids: activeGeofenceIds
+  };
+
+  // Seed-only on first observation — avoid spam after deploy / new device
+  if (!hasPriorEventState) {
+    return nextState;
+  }
+
+  const pending = [];
+
+  if (isOverspeeding && !prevOverspeeding) {
+    pending.push({
+      type: EVENT.OVERSPEED,
+      metadata: { speed, speed_limit: speedLimit }
+    });
+  }
+
+  for (const geofenceId of currentGeofenceIds) {
+    if (!prevGeofenceIds.has(geofenceId)) {
+      const geofence = geofenceById.get(geofenceId);
+      pending.push({
+        type: EVENT.GEOFENCE_ENTER,
+        metadata: {
+          geofence_id: geofenceId,
+          geofence_name: geofence?.name || null,
+          geofence_type: geofence?.type || null
+        }
+      });
+    }
+  }
+
+  for (const geofenceId of prevGeofenceIds) {
+    if (!currentGeofenceIds.has(geofenceId)) {
+      const geofence = geofenceById.get(geofenceId);
+      pending.push({
+        type: EVENT.GEOFENCE_EXIT,
+        metadata: {
+          geofence_id: geofenceId,
+          geofence_name: geofence?.name || null,
+          geofence_type: geofence?.type || null
+        }
+      });
+    }
+  }
+
+  for (const event of pending) {
+    await _emitDeviceEvent({
+      type: event.type,
+      device,
+      asset,
+      telemetryPayload,
+      metadata: event.metadata
+    });
+  }
+
+  return nextState;
+};
+
 export const saveGpsLocation = async ({
   deviceId,
   parsed,
@@ -117,7 +292,7 @@ export const saveGpsLocation = async ({
     return null;
   }
 
-  const device = await getDevice({ device_id: deviceId, is_active: true });
+  const device = await getDeviceById({ device_id: deviceId, is_active: true });
   if (!device) {
     logger.info(`Skipping GPS persist, device not mapped for ${deviceId}`);
     return null;
@@ -125,7 +300,7 @@ export const saveGpsLocation = async ({
 
   const recordedAt = parseDateOrFallback(parsed.timestamp, new Date());
   const telemetryPayload = {
-    user_id: device.user_id,
+    user_id: device.owner_id,
     device_id: deviceId,
     device_type: device.device_type || transport || 'gps_tracker',
     latitude: parsed.latitude,
@@ -159,6 +334,9 @@ export const saveGpsLocation = async ({
     if (!deviceState) {
       deviceState = await createDeviceState({ device_id: device.id });
     }
+
+    const eventState = await _captureAllEventsFromDevice(telemetryPayload, device, deviceState);
+
     await updateDeviceState(deviceState, {
       latitude: toFixedCoordinate(parsed.latitude),
       longitude: toFixedCoordinate(parsed.longitude),
@@ -169,9 +347,10 @@ export const saveGpsLocation = async ({
       satellites: parsed.satellites !== undefined ? parsed.satellites : null,
       address: address || null,
       location: location || null,
-      metadata: metadata || {
-        transport,
-        parsed
+      metadata: {
+        ...(deviceState.metadata || {}),
+        ...(metadata || { transport, parsed }),
+        events: eventState
       },
       last_location_at: recordedAt,
       updated_at: new Date()

@@ -27,7 +27,7 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
           {
             model: Asset,
             as: 'asset',
-            attributes: ['id', 'name', 'type', 'registration_number', 'make', 'model', 'color', 'metadata']
+            attributes: ['id', 'user_id', 'name', 'type', 'speed_limit', 'registration_number', 'make', 'model', 'color', 'metadata']
           }
         ]
       }
@@ -49,7 +49,7 @@ export const getDeviceById = filters =>
       {
         model: DeviceState,
         as: 'device_state',
-        attributes: ['latitude', 'longitude', 'speed', 'heading', 'ignition', 'relay_status', 'last_location_at', 'last_heartbeat_at', 'gsm_signal', 'battery_level', 'gps_fixed', 'satellites', 'gps_tracking', 'address', 'location']
+        attributes: ['latitude', 'longitude', 'speed', 'heading', 'ignition', 'relay_status', 'last_location_at', 'last_heartbeat_at', 'gsm_signal', 'battery_level', 'gps_fixed', 'satellites', 'gps_tracking', 'address', 'location', 'metadata']
       },
       {
         model: DeviceAssetMap,
@@ -59,7 +59,7 @@ export const getDeviceById = filters =>
           {
             model: Asset,
             as: 'asset',
-            attributes: ['id', 'name', 'type', 'registration_number', 'make', 'model', 'color', 'metadata']
+            attributes: ['id', 'user_id', 'name', 'type', 'speed_limit', 'registration_number', 'make', 'model', 'color', 'metadata']
           }
         ]
       }
