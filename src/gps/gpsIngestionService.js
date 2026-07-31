@@ -211,6 +211,7 @@ const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadat
   const eventCopy = copy || EVENT_COPY[type] || { title: type, body: type };
   void _notify(NOTIFY.EVENT_OCCURRED, device.owner_id, {
     device_name: device.device_name,
+    type: type,
     event_title: eventCopy.title,
     event_body: eventCopy.body,
     vehicle_name: asset.name,

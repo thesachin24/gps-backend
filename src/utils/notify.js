@@ -117,6 +117,7 @@ export const _notify = async (template, id, data) => {
                 device_name: data.device_name,
                 event_title: data.event_title,
                 event_body: data.event_body,
+                type: data.type,
                 vehicle_name: data.vehicle_name,
                 time: data.time,
                 device_id: data.device_id
