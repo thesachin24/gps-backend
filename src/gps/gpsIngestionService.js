@@ -13,7 +13,7 @@ import {
 } from '../dao';
 import { acknowledgeDeviceCommandByFlag, createDeviceCommand } from '../dao/deviceCommandDao';
 import { RELAY_ON_RESPONSES, RELAY_OFF_RESPONSES } from '../constants/deviceCommand';
-import { EVENT, NOTIFY } from '../constants';
+import { EVENT, GEOFENCE_TYPE, NOTIFY } from '../constants';
 import { _notify } from '../utils';
 
 const EARTH_RADIUS_M = 6371000;
@@ -32,6 +32,51 @@ const EVENT_COPY = Object.freeze({
     body: 'exited a geofence'
   }
 });
+
+// Which boundary transitions should emit events, per geofence business type.
+const GEOFENCE_ALERT_RULES = Object.freeze({
+  [GEOFENCE_TYPE.REGULAR_ZONE]: { enter: true, exit: true },
+  [GEOFENCE_TYPE.SAFE_ZONE]: { enter: false, exit: true },
+  [GEOFENCE_TYPE.NO_ENTRY_ZONE]: { enter: true, exit: false }
+});
+
+const geofenceEventCopy = (eventType, geofence) => {
+  const name = geofence?.name;
+  const zoneType = geofence?.type;
+
+  if (eventType === EVENT.GEOFENCE_ENTER) {
+    if (zoneType === GEOFENCE_TYPE.NO_ENTRY_ZONE) {
+      return {
+        title: 'No Entry Zone',
+        body: name ? `entered no-entry zone "${name}"` : 'entered a no-entry zone'
+      };
+    }
+    return {
+      title: 'Geofence Enter',
+      body: name ? `entered geofence "${name}"` : EVENT_COPY[EVENT.GEOFENCE_ENTER].body
+    };
+  }
+
+  if (eventType === EVENT.GEOFENCE_EXIT) {
+    if (zoneType === GEOFENCE_TYPE.SAFE_ZONE) {
+      return {
+        title: 'Safe Zone Exit',
+        body: name ? `left safe zone "${name}"` : 'left a safe zone'
+      };
+    }
+    return {
+      title: 'Geofence Exit',
+      body: name ? `exited geofence "${name}"` : EVENT_COPY[EVENT.GEOFENCE_EXIT].body
+    };
+  }
+
+  return EVENT_COPY[eventType] || { title: eventType, body: eventType };
+};
+
+const shouldEmitGeofenceEvent = (geofenceType, transition) => {
+  const rules = GEOFENCE_ALERT_RULES[geofenceType] || GEOFENCE_ALERT_RULES[GEOFENCE_TYPE.REGULAR_ZONE];
+  return !!rules[transition];
+};
 
 const toRadians = deg => (deg * Math.PI) / 180;
 
@@ -151,7 +196,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
   }
 };
 
-const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadata }) => {
+const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadata, copy }) => {
   await createEvent({
     user_id: asset.user_id || device.owner_id,
     asset_id: asset.id,
@@ -163,7 +208,7 @@ const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadat
     event_at: telemetryPayload.recorded_at || new Date()
   });
 
-  const eventCopy = EVENT_COPY[type] || { title: type, body: type };
+  const eventCopy = copy || EVENT_COPY[type] || { title: type, body: type };
   void _notify(NOTIFY.EVENT_OCCURRED, device.owner_id, {
     device_name: device.device_name,
     event_title: eventCopy.title,
@@ -241,8 +286,10 @@ const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState
   for (const geofenceId of currentGeofenceIds) {
     if (!prevGeofenceIds.has(geofenceId)) {
       const geofence = geofenceById.get(geofenceId);
+      if (!shouldEmitGeofenceEvent(geofence?.type, 'enter')) continue;
       pending.push({
         type: EVENT.GEOFENCE_ENTER,
+        copy: geofenceEventCopy(EVENT.GEOFENCE_ENTER, geofence),
         metadata: {
           geofence_id: geofenceId,
           geofence_name: geofence?.name || null,
@@ -255,8 +302,10 @@ const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState
   for (const geofenceId of prevGeofenceIds) {
     if (!currentGeofenceIds.has(geofenceId)) {
       const geofence = geofenceById.get(geofenceId);
+      if (!shouldEmitGeofenceEvent(geofence?.type, 'exit')) continue;
       pending.push({
         type: EVENT.GEOFENCE_EXIT,
+        copy: geofenceEventCopy(EVENT.GEOFENCE_EXIT, geofence),
         metadata: {
           geofence_id: geofenceId,
           geofence_name: geofence?.name || null,
@@ -272,7 +321,8 @@ const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState
       device,
       asset,
       telemetryPayload,
-      metadata: event.metadata
+      metadata: event.metadata,
+      copy: event.copy
     });
   }
 
