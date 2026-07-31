@@ -20,6 +20,7 @@ export const geofence = {
       name: Joi.string().required(),
       center_latitude: Joi.number().required(),
       center_longitude: Joi.number().required(),
+      location: Joi.string().optional().allow('', null),
       radius: Joi.number().integer().required(),
       is_active: Joi.boolean().required(),
       metadata: Joi.object().optional().allow(null)
@@ -34,6 +35,7 @@ export const geofence = {
       name: Joi.string().required(),
       center_latitude: Joi.number().required(),
       center_longitude: Joi.number().required(),
+      location: Joi.string().optional().allow('', null),
       radius: Joi.number().integer().required(),
       is_active: Joi.boolean().required(),
       metadata: Joi.object().optional().allow(null)

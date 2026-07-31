@@ -206,6 +206,7 @@ export const GEOFENCE_FIELD = [
   "type",
   "center_latitude",
   "center_longitude",
+  "location",
   "radius",
   "is_active",
   "created_at",

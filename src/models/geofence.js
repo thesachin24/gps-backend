@@ -55,6 +55,11 @@ const Geofence = sequelize.define(
       allowNull: true,
     },
 
+    location: {
+      type: Sequelize.STRING,
+      allowNull: true,
+    },
+
     // Radius in metres
     radius: {
       type: Sequelize.INTEGER,
