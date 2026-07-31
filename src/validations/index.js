@@ -8,3 +8,4 @@ export { payment } from './payment';
 export { deviceLocation } from './deviceLocation';
 export { device } from './device';
 export { asset } from './asset';
+export { geofence } from './geofence';

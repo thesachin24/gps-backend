@@ -11,6 +11,7 @@ import deviceRoutes from './deviceRoutes';
 import assetRoutes from './assetRoutes';
 import commonRoutes from './commonRoutes';
 import profileRoutes from './profileRoutes';
+import geofenceRoutes from './geofenceRoutes';
 
 router.use('/api-docs', swagger.serve, swagger.setup(swaggerConfig));
 
@@ -25,5 +26,7 @@ router.use('/assets', assetRoutes);
 router.use('/common', commonRoutes);
 
 router.use('/profile', profileRoutes);
+
+router.use('/geofences', geofenceRoutes);
 
 export default router;

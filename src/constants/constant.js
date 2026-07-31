@@ -167,3 +167,29 @@ export const SUBSCRIPTION_STATUS = Object.freeze({
 export const TEST_NUMBERS = [
   '+919871102231',
 ]
+
+export const EVENT = Object.freeze({
+  // Geofence
+  GEOFENCE_ENTER: 'GEOFENCE_ENTER',
+  GEOFENCE_EXIT: 'GEOFENCE_EXIT',
+
+  // Speed
+  OVERSPEED: 'OVERSPEED',
+
+  // Ignition
+  IGNITION_ON: 'IGNITION_ON',
+  IGNITION_OFF: 'IGNITION_OFF',
+  
+});
+
+export const GEOFENCE_TYPE = Object.freeze({
+  // Geofence Type
+  REGULAR: 'REGULAR',
+  SAFE_ZONE: 'SAFE_ZONE',
+  NO_ENTRY: 'NO_ENTRY',
+});
+
+export const SPEED_TYPE = Object.freeze({
+  OVERSPEED: 'OVERSPEED',
+  IDLE: 'IDLE',
+});

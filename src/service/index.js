@@ -7,3 +7,4 @@ export * from './assetService';
 export * from './tripService';
 export * from './assetService';
 export * from './optionService';
+export * from './geofenceService';

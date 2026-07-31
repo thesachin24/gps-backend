@@ -158,6 +158,7 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     ASSET_DELETE_SUCCESS: 'Asset has been successfully deleted.',
     ASSET_NOT_FOUND: 'Asset not found.',
     UNABLE_TO_UPDATE_DATA: 'Unable to Update the Data. Please try again later.',
+    ASSET_NOT_OWNER: 'Asset is not owned by you.',
 
     /* Favorite */
     FAVORITE_CREATE_SUCCESS: 'Favorite has been successfully submitted.',
@@ -194,4 +195,14 @@ export const MESSAGE_CONSTANTS = Object.freeze({
     DEVICE_ALREADY_MAPPED_TO_ASSET: 'Device is already mapped to an asset.',
     DEVICE_NOT_MAPPED_TO_ASSET: 'Device is not mapped to this asset.',
     DEVICE_UNASSIGNED_FROM_ASSET: 'Device has been successfully unassigned from the asset.',
+
+    /* Geofence */
+    GEOFENCE_CREATE_SUCCESS: 'Geofence has been successfully created.',
+    GEOFENCE_UPDATE_SUCCESS: 'Geofence has been successfully updated.',
+    GEOFENCE_DELETE_SUCCESS: 'Geofence has been successfully deleted.',
+    GEOFENCE_NOT_FOUND: 'Geofence not found.',
+    GEOFENCE_NOT_OWNER: 'Geofence is not owned by you.',
+    ASSET_ALREADY_MAPPED_TO_GEOFENCE: 'Asset is already mapped to this geofence.',
+    ASSET_NOT_MAPPED_TO_GEOFENCE: 'Asset is not mapped to this geofence.',
+    ASSET_UNASSIGNED_FROM_GEOFENCE: 'Asset has been successfully unassigned from the geofence.',
 });

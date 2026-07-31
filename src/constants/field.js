@@ -197,3 +197,16 @@ export const TELEMETRY_FIELD = [
   "recorded_at",
   "location",
 ];
+
+export const GEOFENCE_FIELD = [
+  "id",
+  "user_id",
+  "name",
+  "type",
+  "center_latitude",
+  "center_longitude",
+  "radius",
+  "is_active",
+  "created_at",
+  "updated_at"
+];

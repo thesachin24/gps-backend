@@ -10,3 +10,5 @@ export * from './telemetryDao';
 export * from './deviceStateDao';
 export * from './deviceAssetMapDao';
 export * from './deviceCommandDao';
+export * from './geofenceDao';
+export * from './assetGeofenceMapDao';
