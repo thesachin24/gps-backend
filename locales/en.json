@@ -13,6 +13,10 @@
 	"GEOFENCE": {
 		"SUBJECT": "{{vehicle_name}} • {{event_title}}",
 		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} has {{event_body}} at {{time}}."
+	},
+	"DEVICE_ALARM": {
+		"SUBJECT": "{{vehicle_name}} • {{event_title}}",
+		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} {{event_body}} at {{time}}."
 	}
 }
 	

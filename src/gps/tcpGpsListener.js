@@ -1,8 +1,16 @@
 import net from 'net';
 import logger from '../config/logger';
-import { parseGpsPayload, buildGt06AckHex } from './gpsPayloadParser';
+import { parseGpsPayload, buildGt06AckHex, buildGt06AddressResponsePacket } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
-import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
+import {
+  saveGpsLocation,
+  saveHeartbeat,
+  handleCommandResponse,
+  handleRelayEvent,
+  handleDeviceAlarm,
+  handleDeviceStatus,
+  handleLbsReport
+} from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
 import { resolveCommandReply } from './commandAckWaiter';
 import { getDevice } from '../dao';
@@ -324,6 +332,11 @@ class GpsTcpListener {
       }
     } else if (parsed?.type === 'relay_event') {
       void handleRelayEvent({ deviceId: replyDeviceId, parsed });
+    } else if (parsed?.type === 'device_alarm' || parsed?.alarm) {
+      // Non-relay 0x16 alarms → events/notify (additive; does not touch command ACK)
+      void handleDeviceAlarm({ deviceId: replyDeviceId, parsed }).catch(err => {
+        logger.error(`handleDeviceAlarm failed: ${err.message}`);
+      });
     }
 
     if (parsed?.deviceStatus) {
@@ -334,7 +347,30 @@ class GpsTcpListener {
       void handleLbsReport({ deviceId, parsed });
     }
 
-    if (parsed?.ackHex) {
+    // ET06 0x1A address query → reverse-geocode and reply with 0x97 ADDRESS packet
+    if (parsed?.addressQuery) {
+      try {
+        const { address } = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
+        const reply = buildGt06AddressResponsePacket({
+          address:
+            address ||
+            (Number.isFinite(Number(parsed?.latitude))
+              ? `${parsed.latitude},${parsed.longitude}`
+              : 'Unknown location'),
+          phoneNumber: parsed.addressQuery.phoneNumber || '',
+          serial: parsed.serialNo || 1
+        });
+        socket.write(reply.buffer);
+        logger.info(
+          `Address query reply: deviceId=${replyDeviceId} phone=${parsed.addressQuery.phoneNumber || 'n/a'}`
+        );
+      } catch (error) {
+        logger.error(`Address query reply failed: ${error.message}`);
+        if (parsed?.ackHex) {
+          socket.write(Buffer.from(parsed.ackHex, 'hex'));
+        }
+      }
+    } else if (parsed?.ackHex) {
       socket.write(Buffer.from(parsed.ackHex, 'hex'));
       // logger.info(`GPS TCP ACK sent (${parsed.protocol || parsed.type}) to ${remote}`);
     }

@@ -30,8 +30,49 @@ const EVENT_COPY = Object.freeze({
   [EVENT.GEOFENCE_EXIT]: {
     title: 'Geofence Exit',
     body: 'exited a geofence'
-  }
+  },
+  [EVENT.SOS]: { title: 'SOS', body: 'triggered an SOS alarm' },
+  [EVENT.SHOCK]: { title: 'Shock', body: 'detected a shock alarm' },
+  [EVENT.POWER_CUT]: { title: 'Power Cut', body: 'detected a power cut' },
+  [EVENT.LOW_BATTERY]: { title: 'Low Battery', body: 'has a low battery' },
+  [EVENT.DEVICE_GEOFENCE_IN]: { title: 'Device Fence In', body: 'entered a device geofence' },
+  [EVENT.DEVICE_GEOFENCE_OUT]: { title: 'Device Fence Out', body: 'exited a device geofence' },
+  [EVENT.REMOVAL]: { title: 'Removal', body: 'detected a removal alarm' }
 });
+
+const ALARM_DEDUPE_MS = 60_000;
+
+/** Map ET06 Alarm/Language / heartbeat alarm names → EVENT (skip normal/armed/relay) */
+const ALARM_NAME_TO_EVENT = Object.freeze({
+  sos: EVENT.SOS,
+  shock: EVENT.SHOCK,
+  power_cut: EVENT.POWER_CUT,
+  low_battery: EVENT.LOW_BATTERY,
+  fence_in: EVENT.DEVICE_GEOFENCE_IN,
+  fence_out: EVENT.DEVICE_GEOFENCE_OUT,
+  geofence_in: EVENT.DEVICE_GEOFENCE_IN,
+  geofence_out: EVENT.DEVICE_GEOFENCE_OUT,
+  geofence: EVENT.DEVICE_GEOFENCE_IN,
+  removal: EVENT.REMOVAL,
+  removal_or_overspeed: EVENT.REMOVAL
+});
+
+const resolveAlarmEventType = alarm => {
+  if (!alarm || (alarm.relayOn !== null && alarm.relayOn !== undefined)) {
+    return null;
+  }
+  // Prefer ET06 Alarm/Language former-byte decode for 0x16
+  const et06 = alarm.et06AlarmLanguage;
+  if (et06 && et06 !== 'normal' && et06 !== 'unknown' && ALARM_NAME_TO_EVENT[et06]) {
+    return ALARM_NAME_TO_EVENT[et06];
+  }
+  // Fall back to clone-style alarmName / heartbeat alarmType
+  const name = alarm.alarmName || alarm.alarmType;
+  if (name && ALARM_NAME_TO_EVENT[name]) {
+    return ALARM_NAME_TO_EVENT[name];
+  }
+  return null;
+};
 
 // Which boundary transitions should emit events, per geofence business type.
 const GEOFENCE_ALERT_RULES = Object.freeze({
@@ -160,6 +201,12 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
     if (!deviceState) {
       deviceState = await createDeviceState({ device_id: device.id });
     }
+    const terminalDecoded = parsed.heartbeat?.terminalInfoDecoded || {};
+    const oilElectricityCut = terminalDecoded.oilElectricityCut ?? null;
+    const charging = terminalDecoded.charging ?? null;
+    const heartbeatAlarmType = terminalDecoded.alarmType || 'normal';
+    const prevHeartbeatAlarm = deviceState.metadata?.terminal?.alarm_type || 'normal';
+
     await updateDeviceState(deviceState, {
       heartbeat: heartbeatData,
       battery_level: batteryLevel,
@@ -168,10 +215,45 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       gps_tracking: gpsTracking,
       // Only update gps_fixed from heartbeat if no GPS packet has set it yet
       ...(deviceState.gps_fixed === null && gpsCourseValid !== null ? { gps_fixed: gpsCourseValid } : {}),
+      metadata: {
+        ...(deviceState.metadata || {}),
+        terminal: {
+          ...(deviceState.metadata?.terminal || {}),
+          charging,
+          oil_electricity_cut: oilElectricityCut,
+          defense_activated: terminalDecoded.defenseActivated ?? terminalDecoded.armed ?? null,
+          alarm_type: heartbeatAlarmType,
+          updated_at: new Date().toISOString()
+        }
+      },
       last_heartbeat_at: new Date(),
       updated_at: new Date()
     });
     logger.info(`Heartbeat persist success: deviceId=${deviceId} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
+
+    // Edge-trigger only when heartbeat alarm bits change into an active alarm
+    if (
+      heartbeatAlarmType &&
+      heartbeatAlarmType !== 'normal' &&
+      heartbeatAlarmType !== 'reserved' &&
+      heartbeatAlarmType !== prevHeartbeatAlarm
+    ) {
+      void handleDeviceAlarm({
+        deviceId,
+        parsed: {
+          alarm: {
+            alarmType: heartbeatAlarmType,
+            alarmName: heartbeatAlarmType,
+            et06AlarmLanguage: null,
+            relayOn: null,
+            terminalInfoDecoded: terminalDecoded
+          },
+          latitude: deviceState.latitude,
+          longitude: deviceState.longitude,
+          source: 'heartbeat'
+        }
+      });
+    }
 
     // Send push notification to the user
      console.log(ignitionOn, ignitionState, device.owner_id)
@@ -226,7 +308,18 @@ const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadat
     notifyType = NOTIFY.OVERSPEED;
   } else if(type === EVENT.GEOFENCE_ENTER || type === EVENT.GEOFENCE_EXIT) {
     notifyType = NOTIFY.GEOFENCE;
+  } else if (
+    type === EVENT.SOS ||
+    type === EVENT.SHOCK ||
+    type === EVENT.POWER_CUT ||
+    type === EVENT.LOW_BATTERY ||
+    type === EVENT.DEVICE_GEOFENCE_IN ||
+    type === EVENT.DEVICE_GEOFENCE_OUT ||
+    type === EVENT.REMOVAL
+  ) {
+    notifyType = NOTIFY.DEVICE_ALARM;
   }
+  if (!notifyType) return;
   void _notify(notifyType, device.owner_id, {
     device_name: device.device_name,
     type: type,
@@ -427,6 +520,88 @@ export const saveGpsLocation = async ({
     return telemetryData;
   } catch (error) {
     logger.error(`Failed to persist GPS location for ${deviceId}: ${error.message} payload=${JSON.stringify(telemetryPayload)}`);
+    return null;
+  }
+};
+
+/**
+ * Persist device-side alarms (0x16 / heartbeat) as events + push.
+ * Does not touch relay_status or the command ACK path.
+ */
+export const handleDeviceAlarm = async ({ deviceId, parsed }) => {
+  const alarm = parsed?.alarm;
+  if (!deviceId || !alarm) return null;
+
+  const eventType = resolveAlarmEventType(alarm);
+  if (!eventType) return null;
+
+  const device = await getDeviceById({ device_id: deviceId, is_active: true });
+  if (!device) {
+    logger.info(`Device alarm skipped: device not mapped for ${deviceId}`);
+    return null;
+  }
+
+  const asset = device.device_asset?.asset;
+  if (!asset?.id) {
+    logger.info(`Device alarm skipped: no asset mapped for ${deviceId}`);
+    return null;
+  }
+
+  try {
+    let deviceState = await getDeviceState({ device_id: device.id });
+    if (!deviceState) {
+      deviceState = await createDeviceState({ device_id: device.id });
+    }
+
+    const alarmKey = `${eventType}:${alarm.alarmStatus ?? alarm.alarmType ?? alarm.alarmName}`;
+    const last = deviceState.metadata?.alarms?.last;
+    if (
+      last?.key === alarmKey &&
+      last?.at &&
+      Date.now() - new Date(last.at).getTime() < ALARM_DEDUPE_MS
+    ) {
+      return null;
+    }
+
+    const latitude = Number.isFinite(Number(parsed.latitude))
+      ? Number(parsed.latitude)
+      : deviceState.latitude;
+    const longitude = Number.isFinite(Number(parsed.longitude))
+      ? Number(parsed.longitude)
+      : deviceState.longitude;
+
+    await _emitDeviceEvent({
+      type: eventType,
+      device,
+      asset,
+      telemetryPayload: {
+        latitude,
+        longitude,
+        recorded_at: parseDateOrFallback(parsed.timestamp, new Date())
+      },
+      metadata: {
+        source: parsed.source || 'alarm_packet',
+        alarm_status: alarm.alarmStatus ?? null,
+        alarm_name: alarm.alarmName || alarm.alarmType || null,
+        et06_alarm_language: alarm.et06AlarmLanguage || null
+      },
+      copy: EVENT_COPY[eventType]
+    });
+
+    await updateDeviceState(deviceState, {
+      metadata: {
+        ...(deviceState.metadata || {}),
+        alarms: {
+          last: { key: alarmKey, type: eventType, at: new Date().toISOString() }
+        }
+      },
+      updated_at: new Date()
+    });
+
+    logger.info(`Device alarm: deviceId=${deviceId} type=${eventType}`);
+    return eventType;
+  } catch (error) {
+    logger.error(`Failed to handle device alarm for ${deviceId}: ${error.message}`);
     return null;
   }
 };

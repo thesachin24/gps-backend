@@ -145,6 +145,7 @@ export const NOTIFY = Object.freeze({
   OTP_CONFIRM: "OTP_CONFIRM",
   OVERSPEED: "OVERSPEED",
   GEOFENCE: "GEOFENCE",
+  DEVICE_ALARM: "DEVICE_ALARM",
 });
 
 export const BANNER_TYPE = Object.freeze({
@@ -175,7 +176,7 @@ export const EVENT = Object.freeze({
   RELAY_ON: 'RELAY_ON',
   RELAY_OFF: 'RELAY_OFF',
 
-  // Geofence
+  // Geofence (server-side mapped zones)
   GEOFENCE_ENTER: 'GEOFENCE_ENTER',
   GEOFENCE_EXIT: 'GEOFENCE_EXIT',
 
@@ -185,7 +186,15 @@ export const EVENT = Object.freeze({
   // Ignition
   IGNITION_ON: 'IGNITION_ON',
   IGNITION_OFF: 'IGNITION_OFF',
-  
+
+  // Device-side alarms (ET06 0x13 / 0x16)
+  SOS: 'SOS',
+  SHOCK: 'SHOCK',
+  POWER_CUT: 'POWER_CUT',
+  LOW_BATTERY: 'LOW_BATTERY',
+  DEVICE_GEOFENCE_IN: 'DEVICE_GEOFENCE_IN',
+  DEVICE_GEOFENCE_OUT: 'DEVICE_GEOFENCE_OUT',
+  REMOVAL: 'REMOVAL',
 });
 
 export const GEOFENCE_TYPE = Object.freeze({

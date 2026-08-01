@@ -139,6 +139,21 @@ export const _notify = async (template, id, data) => {
             }
             _notifyAll(template, sendTo, to, tokens, variables, data.device_id)
             break;
+        case NOTIFY.DEVICE_ALARM:
+            sendTo = {
+                isPush: true
+            }
+            variables = {
+                device_name: data.device_name,
+                event_title: data.event_title,
+                event_body: data.event_body,
+                type: data.type,
+                vehicle_name: data.vehicle_name,
+                time: data.time,
+                device_id: data.device_id
+            }
+            _notifyAll(template, sendTo, to, tokens, variables, data.device_id)
+            break;
         default:
             break;
     }

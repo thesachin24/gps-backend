@@ -9,7 +9,9 @@ export const COMMAND_ALIASES = Object.freeze({
   RELAY_ON: 'relay_on',
   RELAY_OFF: 'relay_off',
   STATUS: 'status',
-  PARAM: 'param'
+  PARAM: 'param',
+  WHERE: 'where',
+  DWXX: 'dwxx'
 });
 
 /**
@@ -39,6 +41,8 @@ export const RAW_COMMANDS = Object.freeze({
 
   // Request current location
   WHERE: 'WHERE#',
+  // ET06 V1.8 §6.x — locate / request current position reply
+  DWXX: 'DWXX#',
 
   // Reset device
   RESET: 'RESET#',

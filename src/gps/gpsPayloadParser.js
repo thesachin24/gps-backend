@@ -278,7 +278,29 @@ const decodeGt06Alarm = infoBuffer => {
     gsmSignal: decodeGsmSignal(gsmSignalStrength),
     alarmStatus,
     alarmName,
+    // Additive ET06 Alarm/Language decode (does not replace alarmName)
+    et06AlarmLanguage: decodeEt06AlarmLanguage(alarmStatus),
     relayOn: alarmStatus === 0x09 ? true : alarmStatus === 0x0a ? false : null
+  };
+};
+
+/**
+ * Decode ET06 address-query request (protocol 0x1A).
+ * Layout: GPS block (18+) + phone(21) + language(2)
+ */
+const decodeAddressQuery = infoBuffer => {
+  if (!infoBuffer || infoBuffer.length < 41) {
+    return null;
+  }
+  const gps = decodeGt06GpsLbs(infoBuffer.subarray(0, Math.min(infoBuffer.length, 26)));
+  const phoneRaw = infoBuffer.subarray(18, 39).toString('ascii');
+  const phoneNumber = phoneRaw.replace(/\0/g, '').trim();
+  const language = infoBuffer.length >= 41 ? infoBuffer.readUInt16BE(39) : null;
+  return {
+    gps: gps || null,
+    phoneNumber: phoneNumber || null,
+    language,
+    languageName: language === 0x0001 ? 'chinese' : language === 0x0002 ? 'english' : 'unknown'
   };
 };
 
@@ -382,28 +404,43 @@ const decodeInfoTransmissionPayload = (infoType, payloadBuffer) => {
 };
 
 const decodeHeartbeatTerminalInfo = terminalInfo => {
-  // Standard GT06 terminalInfo bit layout:
-  //   Bit 0 – defense/armed (relay state)
-  //   Bit 1 – ACC / ignition on
-  //   Bit 2 – charging
-  //   Bits 3-5 – alarm code
-  //   Bit 6 – GPS tracking active (module powered & searching/locked)
-  //   Bit 7 – GPS course valid (device has a confirmed GPS fix)
-  // Note: bit assignment varies between firmware revisions. Bits 6 & 7
-  // are the most vendor-specific; treat them as advisory signals.
+  // Bit layout (GT06 clones vs ET06 V1.8 §5.3.1.12):
+  //   Bit 0 – defense / activated (both)
+  //   Bit 1 – ACC / ignition on (both)
+  //   Bit 2 – charging (both)
+  //   Bits 3-5 – alarm code (both; see decodeHeartbeatAlarm)
+  //   Bit 6 – GPS tracking active (both)
+  //   Bit 7 – GT06 clones: GPS course valid | ET06: oil/electricity cut
+  // Existing fields kept for compatibility; ET06-specific names are additive.
   const alarmCode = (terminalInfo >> 3) & 0x07;
+  const bit7 = (terminalInfo & 0x80) !== 0;
   return {
     raw: terminalInfo,
     bits: terminalInfo.toString(2).padStart(8, '0'),
     armed: (terminalInfo & 0x01) !== 0,
+    defenseActivated: (terminalInfo & 0x01) !== 0,
     ignitionOn: (terminalInfo & 0x02) !== 0,
     charging: (terminalInfo & 0x04) !== 0,
     alarmCode,
     alarmType: decodeHeartbeatAlarm(alarmCode),
-    // GPS status flags (bits 6-7)
     gpsTracking: (terminalInfo & 0x40) !== 0,
-    gpsCourseValid: (terminalInfo & 0x80) !== 0
+    gpsCourseValid: bit7,
+    // ET06 §5.3.1.12 — bit7 oil/electricity disconnected when set
+    oilElectricityCut: bit7
   };
+};
+
+/** ET06 Alarm/Language former byte (§5.3.1.17) — used by 0x16 alarm packets */
+const decodeEt06AlarmLanguage = code => {
+  const map = {
+    0x00: 'normal',
+    0x01: 'sos',
+    0x02: 'power_cut',
+    0x03: 'shock',
+    0x04: 'fence_in',
+    0x05: 'fence_out'
+  };
+  return map[code] || 'unknown';
 };
 const decodeGt06InfoTransmission = infoBuffer => {
   if (!infoBuffer || !infoBuffer.length) {
@@ -448,11 +485,13 @@ const toProtocolName = protocolNo => {
     0x15: 'command_response',
     0x16: 'alarm',
     0x17: 'command_response',
+    0x1a: 'address_query',
     0x21: 'string_info', // ET06 / JM extended string reply (often 7979)
     0x22: 'gps_lbs_extended',
     0x24: 'gps_lbs_status',
     0x80: 'server_response',
-    0x94: 'information_transmission'
+    0x94: 'information_transmission',
+    0x97: 'address_response'
   };
   return names[protocolNo] || `protocol_${protocolNo}`;
 };
@@ -731,6 +770,68 @@ export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null, o
   };
 };
 
+/**
+ * Build ET06 English address response (protocol 0x97) for a 0x1A address query.
+ * Content: ADDRESS&&<UTF-16BE address>&&<phone 21>##
+ */
+export const buildGt06AddressResponsePacket = ({
+  address,
+  phoneNumber = '',
+  serial = 1,
+  serverFlag = null
+} = {}) => {
+  const flag = serverFlag && Buffer.isBuffer(serverFlag) && serverFlag.length === 4
+    ? serverFlag
+    : Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
+
+  const phoneBuf = Buffer.alloc(21, 0);
+  Buffer.from(String(phoneNumber || '').replace(/\D/g, '').slice(0, 21), 'ascii').copy(phoneBuf);
+
+  const addressText = String(address || 'Unknown location').slice(0, 200);
+  // Node has no utf16be encoding — build BE code units manually (ET06 §6.7.2)
+  const addressUnicode = Buffer.alloc(addressText.length * 2);
+  for (let i = 0; i < addressText.length; i++) {
+    addressUnicode.writeUInt16BE(addressText.charCodeAt(i), i * 2);
+  }
+
+  const content = Buffer.concat([
+    Buffer.from('ADDRESS', 'ascii'),
+    Buffer.from('&&', 'ascii'),
+    addressUnicode,
+    Buffer.from('&&', 'ascii'),
+    phoneBuf,
+    Buffer.from('##', 'ascii')
+  ]);
+
+  // Length of Command (2 bytes) = serverFlag(4) + content
+  const commandLength = 4 + content.length;
+  const serialHi = (serial >> 8) & 0xff;
+  const serialLo = serial & 0xff;
+
+  // Data length (2 bytes) = protocol(1) + cmdLen(2) + command + serial(2) + crc(2)
+  const dataLength = 1 + 2 + commandLength + 2 + 2;
+
+  const bodyForCrc = Buffer.concat([
+    Buffer.from([(dataLength >> 8) & 0xff, dataLength & 0xff, 0x97, (commandLength >> 8) & 0xff, commandLength & 0xff]),
+    flag,
+    content,
+    Buffer.from([serialHi, serialLo])
+  ]);
+
+  const crc = crc16Itu(bodyForCrc);
+  const packet = Buffer.concat([
+    Buffer.from([0x78, 0x78]),
+    bodyForCrc,
+    Buffer.from([(crc >> 8) & 0xff, crc & 0xff, 0x0d, 0x0a])
+  ]);
+
+  return {
+    hex: packet.toString('hex'),
+    buffer: packet,
+    serial
+  };
+};
+
 const parseGt06Payload = rawBuffer => {
   if (!Buffer.isBuffer(rawBuffer) || rawBuffer.length < 10) {
     return null;
@@ -892,6 +993,8 @@ const parseGt06Payload = rawBuffer => {
       if (alarm.relayOn !== null) {
         parsed.relayOn = alarm.relayOn;
         parsed.type = 'relay_event';
+      } else {
+        parsed.type = 'device_alarm';
       }
       if (alarm.gps?.latitude && alarm.gps?.longitude) {
         parsed.latitude = alarm.gps.latitude;
@@ -901,6 +1004,21 @@ const parseGt06Payload = rawBuffer => {
         parsed.timestamp = alarm.gps.timestamp;
       }
     }
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
+  } else if (protocolNo === 0x1a) {
+    const addressQuery = decodeAddressQuery(infoBuffer);
+    if (addressQuery) {
+      parsed.addressQuery = addressQuery;
+      parsed.type = 'address_query';
+      if (addressQuery.gps?.latitude && addressQuery.gps?.longitude) {
+        parsed.latitude = addressQuery.gps.latitude;
+        parsed.longitude = addressQuery.gps.longitude;
+        parsed.speed = addressQuery.gps.speed;
+        parsed.heading = addressQuery.gps.heading;
+        parsed.timestamp = addressQuery.gps.timestamp;
+      }
+    }
+    // Listener replies with 0x97 ADDRESS packet (not a bare ACK)
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x15 || protocolNo === 0x17) {
     // ET06 §6.2 — 0x15 reply: [4+len][flag:4][content][lang:2?]
