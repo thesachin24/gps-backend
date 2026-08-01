@@ -171,7 +171,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       last_heartbeat_at: new Date(),
       updated_at: new Date()
     });
-    logger.info(`Heartbeat persist success: deviceId=${deviceId} relay=${relayStatus} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
+    logger.info(`Heartbeat persist success: deviceId=${deviceId} ignition=${ignitionOn} gpsTracking=${gpsTracking} gpsCourseValid=${gpsCourseValid}`);
 
     // Send push notification to the user
      console.log(ignitionOn, ignitionState, device.owner_id)
