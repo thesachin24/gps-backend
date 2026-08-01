@@ -13,12 +13,12 @@ import {
 } from '../controller';
 import {
   sendCommand,
-  getCommandList,
-  getCommandDetail,
-  getDeviceOnlineStatus,
-  getRelayStatusHandler,
-  logSmsRelayEvent
-} from '../controller/deviceCommandController';import { device } from '../validations';
+  // getCommandList,
+  // getCommandDetail,
+  // getDeviceOnlineStatus,
+  // getRelayStatusHandler,
+  // logSmsRelayEvent
+} from '../controller';import { device } from '../validations';
 
 const deviceRoutes = express.Router({ mergeParams: true });
 
@@ -148,29 +148,29 @@ deviceRoutes.delete(
   deleteDevice
 );
 
-/**
- * @swagger
- * /devices/{id}/online:
- *   get:
- *     description: Check if device has an active TCP connection
- *     security:
- *       - Bearer: []
- *     tags:
- *       - Device
- */
-deviceRoutes.get('/:id/online', authenticate, getDeviceOnlineStatus);
+// /**
+//  * @swagger
+//  * /devices/{id}/online:
+//  *   get:
+//  *     description: Check if device has an active TCP connection
+//  *     security:
+//  *       - Bearer: []
+//  *     tags:
+//  *       - Device
+//  */
+// deviceRoutes.get('/:id/online', authenticate, getDeviceOnlineStatus);
 
-/**
- * @swagger
- * /devices/{id}/relay-status:
- *   get:
- *     description: Get the current relay/immobilizer state derived from the last acknowledged RELAY command
- *     security:
- *       - Bearer: []
- *     tags:
- *       - Device
- */
-deviceRoutes.get('/:id/relay-status', authenticate, getRelayStatusHandler);
+// /**
+//  * @swagger
+//  * /devices/{id}/relay-status:
+//  *   get:
+//  *     description: Get the current relay/immobilizer state derived from the last acknowledged RELAY command
+//  *     security:
+//  *       - Bearer: []
+//  *     tags:
+//  *       - Device
+//  */
+// deviceRoutes.get('/:id/relay-status', authenticate, getRelayStatusHandler);
 
 /**
  * @swagger
@@ -185,40 +185,40 @@ deviceRoutes.get('/:id/relay-status', authenticate, getRelayStatusHandler);
 deviceRoutes.post('/:id/commands', authenticate, sendCommand);
 
 /**
- * @swagger
- * /devices/{id}/relay-events:
- *   post:
- *     description: Manually log a relay command sent via SMS (so the backend tracks it)
- *     security:
- *       - Bearer: []
- *     tags:
- *       - Device
- */
-deviceRoutes.post('/:id/relay-events', authenticate, logSmsRelayEvent);
+//  * @swagger
+//  * /devices/{id}/relay-events:
+//  *   post:
+//  *     description: Manually log a relay command sent via SMS (so the backend tracks it)
+//  *     security:
+//  *       - Bearer: []
+//  *     tags:
+//  *       - Device
+//  */
+// deviceRoutes.post('/:id/relay-events', authenticate, logSmsRelayEvent);
 
 /**
- * @swagger
- * /devices/{id}/commands:
- *   get:
- *     description: List all commands sent to the device
- *     security:
- *       - Bearer: []
- *     tags:
- *       - Device
- */
-deviceRoutes.get('/:id/commands', authenticate, getCommandList);
+//  * @swagger
+//  * /devices/{id}/commands:
+//  *   get:
+//  *     description: List all commands sent to the device
+//  *     security:
+//  *       - Bearer: []
+//  *     tags:
+//  *       - Device
+//  */
+// deviceRoutes.get('/:id/commands', authenticate, getCommandList);
 
-/**
- * @swagger
- * /devices/{id}/commands/{commandId}:
- *   get:
- *     description: Get a specific command and its acknowledgement status
- *     security:
- *       - Bearer: []
- *     tags:
- *       - Device
- */
-deviceRoutes.get('/:id/commands/:commandId', authenticate, getCommandDetail);
+// /**
+//  * @swagger
+//  * /devices/{id}/commands/{commandId}:
+//  *   get:
+//  *     description: Get a specific command and its acknowledgement status
+//  *     security:
+//  *       - Bearer: []
+//  *     tags:
+//  *       - Device
+//  */
+// deviceRoutes.get('/:id/commands/:commandId', authenticate, getCommandDetail);
 
 /**
  * @swagger

@@ -8,16 +8,16 @@ import { isDeviceOnline } from '../gps/socketRegistry';
 export const sendCommand = async (req, res) => {
   const {
     auth: { user_id },
-    params: { id: deviceDbId },
+    params: { id },
     body: { command }
   } = req;
   try {
-    const device = await getDevice({ id: deviceDbId, is_active: true });
+    const device = await getDevice({ id, is_active: true });
     if (!device) {
       return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
     }
     const result = await sendDeviceCommand({
-      deviceDbId: Number(deviceDbId),
+      id,
       deviceStringId: device.device_id,
       command,
       userId: user_id
@@ -29,90 +29,90 @@ export const sendCommand = async (req, res) => {
   }
 };
 
-export const getCommandList = async (req, res) => {
-  const {
-    params: { id: deviceDbId },
-    query: { page, limit }
-  } = req;
-  try {
-    const result = await listDeviceCommands({ deviceDbId: Number(deviceDbId), page, limit });
-    return res.status(OK).json(result);
-  } catch (err) {
-    logger.error(err);
-    return res.status(err.status || SERVER_ERROR).json({ message: err.message });
-  }
-};
+// export const getCommandList = async (req, res) => {
+//   const {
+//     params: { id: deviceDbId },
+//     query: { page, limit }
+//   } = req;
+//   try {
+//     const result = await listDeviceCommands({ deviceDbId: Number(deviceDbId), page, limit });
+//     return res.status(OK).json(result);
+//   } catch (err) {
+//     logger.error(err);
+//     return res.status(err.status || SERVER_ERROR).json({ message: err.message });
+//   }
+// };
 
-export const getCommandDetail = async (req, res) => {
-  const {
-    params: { id: deviceDbId, commandId }
-  } = req;
-  try {
-    const result = await getDeviceCommandDetail({ commandId, deviceDbId: Number(deviceDbId) });
-    return res.status(OK).json(result);
-  } catch (err) {
-    logger.error(err);
-    return res.status(err.status || SERVER_ERROR).json({ message: err.message });
-  }
-};
+// export const getCommandDetail = async (req, res) => {
+//   const {
+//     params: { id: deviceDbId, commandId }
+//   } = req;
+//   try {
+//     const result = await getDeviceCommandDetail({ commandId, deviceDbId: Number(deviceDbId) });
+//     return res.status(OK).json(result);
+//   } catch (err) {
+//     logger.error(err);
+//     return res.status(err.status || SERVER_ERROR).json({ message: err.message });
+//   }
+// };
 
-export const getDeviceOnlineStatus = async (req, res) => {
-  const { params: { id: deviceDbId } } = req;
-  try {
-    const device = await getDevice({ id: deviceDbId, is_active: true });
-    if (!device) {
-      return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
-    }
-    const online = isDeviceOnline(device.device_id);
-    return res.status(OK).json({
-      message: MESSAGE_CONSTANTS.SUCCESS,
-      data: { device_id: device.device_id, online }
-    });
-  } catch (err) {
-    logger.error(err);
-    return res.status(err.status || SERVER_ERROR).json({ message: err.message });
-  }
-};
+// export const getDeviceOnlineStatus = async (req, res) => {
+//   const { params: { id: deviceDbId } } = req;
+//   try {
+//     const device = await getDevice({ id: deviceDbId, is_active: true });
+//     if (!device) {
+//       return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
+//     }
+//     const online = isDeviceOnline(device.device_id);
+//     return res.status(OK).json({
+//       message: MESSAGE_CONSTANTS.SUCCESS,
+//       data: { device_id: device.device_id, online }
+//     });
+//   } catch (err) {
+//     logger.error(err);
+//     return res.status(err.status || SERVER_ERROR).json({ message: err.message });
+//   }
+// };
 
-export const getRelayStatusHandler = async (req, res) => {
-  const { params: { id: deviceDbId } } = req;
-  try {
-    const device = await getDevice({ id: deviceDbId, is_active: true });
-    if (!device) {
-      return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
-    }
-    const result = await getRelayStatus({
-      deviceDbId: Number(deviceDbId),
-      deviceStringId: device.device_id
-    });
-    return res.status(OK).json(result);
-  } catch (err) {
-    logger.error(err);
-    return res.status(err.status || SERVER_ERROR).json({ message: err.message });
-  }
-};
+// export const getRelayStatusHandler = async (req, res) => {
+//   const { params: { id: deviceDbId } } = req;
+//   try {
+//     const device = await getDevice({ id: deviceDbId, is_active: true });
+//     if (!device) {
+//       return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
+//     }
+//     const result = await getRelayStatus({
+//       deviceDbId: Number(deviceDbId),
+//       deviceStringId: device.device_id
+//     });
+//     return res.status(OK).json(result);
+//   } catch (err) {
+//     logger.error(err);
+//     return res.status(err.status || SERVER_ERROR).json({ message: err.message });
+//   }
+// };
 
-export const logSmsRelayEvent = async (req, res) => {
-  const {
-    auth: { user_id },
-    params: { id: deviceDbId },
-    body: { relay_on, note }
-  } = req;
-  try {
-    const device = await getDevice({ id: deviceDbId, is_active: true });
-    if (!device) {
-      return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
-    }
-    const result = await logSmsRelay({
-      deviceDbId: Number(deviceDbId),
-      deviceStringId: device.device_id,
-      relayOn: relay_on,
-      note,
-      userId: user_id
-    });
-    return res.status(CREATED).json(result);
-  } catch (err) {
-    logger.error(err);
-    return res.status(err.status || SERVER_ERROR).json({ message: err.message });
-  }
-};
+// export const logSmsRelayEvent = async (req, res) => {
+//   const {
+//     auth: { user_id },
+//     params: { id: deviceDbId },
+//     body: { relay_on, note }
+//   } = req;
+//   try {
+//     const device = await getDevice({ id: deviceDbId, is_active: true });
+//     if (!device) {
+//       return res.status(NOT_FOUND).json({ message: MESSAGE_CONSTANTS.DEVICE_NOT_FOUND });
+//     }
+//     const result = await logSmsRelay({
+//       deviceDbId: Number(deviceDbId),
+//       deviceStringId: device.device_id,
+//       relayOn: relay_on,
+//       note,
+//       userId: user_id
+//     });
+//     return res.status(CREATED).json(result);
+//   } catch (err) {
+//     logger.error(err);
+//     return res.status(err.status || SERVER_ERROR).json({ message: err.message });
+//   }
+// };
