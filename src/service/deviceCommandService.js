@@ -63,7 +63,8 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
   const serial = nextSerial();
   const sentAt = new Date();
 
-  const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
+  // const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
+  const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(command);
 
   // Log as PENDING before touching the socket
   const record = await createDeviceCommand({
