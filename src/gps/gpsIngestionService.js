@@ -186,6 +186,19 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       time: formatDateTime(new Date(), 'time'),
       device_id: device.id
     });
+    
+    // Create event for ignition state changed
+    await createEvent({
+      user_id: device.owner_id,
+      asset_id: device.device_asset?.asset?.id || null,
+      device_id: device.id,
+      type: ignitionOn ? EVENT.IGNITION_ON : EVENT.IGNITION_OFF,
+      latitude: deviceState.latitude,
+      longitude: deviceState.longitude,
+      metadata: null,
+      event_at: new Date()
+    });
+    
     }
     // Send push notification to the user
 
