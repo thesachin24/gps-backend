@@ -11,7 +11,7 @@ export const event = {
       page: Joi.number().optional(),
       limit: Joi.number().optional(),
       sortByName: Joi.string().valid('asc', 'desc', 'ASC', 'DESC').optional(),
-      type: Joi.string().valid(...Object.values(EVENT)).optional(),
+      type: Joi.array().items(Joi.string().valid(...Object.values(EVENT))).optional(),
       asset_id: Joi.number().integer().positive().optional(),
     }
   },

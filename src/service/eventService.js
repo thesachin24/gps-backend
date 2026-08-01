@@ -35,7 +35,7 @@ export const getAllEvents = async payload => {
     filter = {
       ...filter,
       type: {
-        [Sequelize.Op.eq]: type
+        [Sequelize.Op.in]: type
       }
     };
   }
