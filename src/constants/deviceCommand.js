@@ -17,9 +17,9 @@ export const COMMAND_ALIASES = Object.freeze({
  * Trailing `#` is required (SMS-compatible command content).
  */
 export const RAW_COMMANDS = Object.freeze({
-  // Relay / immobilizer
-  RELAY_ON: 'RELAY,1#',
-  RELAY_OFF: 'RELAY,0#',
+  // Relay / immobilizer — Traccar-compatible casing (most GT06 clones)
+  RELAY_ON: 'Relay,1#',
+  RELAY_OFF: 'Relay,0#',
 
   // Query current device status (returns terminalInfo + relay state on many devices)
   CHECK: 'CHECK#',

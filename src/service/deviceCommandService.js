@@ -141,7 +141,8 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
   // Register ACK waiter BEFORE write so a fast 0x17 on the same socket is not missed.
   // tcpGpsListener parses the reply and resolves this waiter (ack handled here only).
-  const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 8000);
+  // 12s — clones often reply with 0x16 alarm a few seconds after Relay,1#
+  const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 12000);
 
   try {
     await new Promise((resolve, reject) => {

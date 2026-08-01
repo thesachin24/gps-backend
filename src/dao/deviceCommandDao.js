@@ -64,7 +64,14 @@ export const getLastAcknowledgedRelayCommand = deviceStringId =>
     where: {
       device_string_id: deviceStringId,
       command: {
-        [require('sequelize').Op.in]: ['RELAY,1', 'RELAY,0', 'RELAY,1#', 'RELAY,0#']
+        [require('sequelize').Op.in]: [
+          'RELAY,1',
+          'RELAY,0',
+          'RELAY,1#',
+          'RELAY,0#',
+          'Relay,1#',
+          'Relay,0#'
+        ]
       },
       status: COMMAND_STATUS.ACKNOWLEDGED
     },
