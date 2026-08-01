@@ -149,7 +149,8 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     } else if(resolvedCommand === RAW_COMMANDS.RELAY_OFF) {
       relayStatus = false;
     }
-    await updateDeviceState(deviceState, { relay_status: relayStatus });
+    const updatedDeviceState = await updateDeviceState(deviceState, { relay_status: relayStatus });
+    console.log('updatedDeviceState', updatedDeviceState);
     // Updat Device State
 
     logger.info(
