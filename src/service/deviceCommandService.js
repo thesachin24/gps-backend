@@ -1,12 +1,12 @@
 import logger from '../config/logger';
-import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, FORBIDDEN, UN_PROCESSABLE_ENTITY, OFFSET, PAGE_LIMIT } from '../constants';
+import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, FORBIDDEN, UN_PROCESSABLE_ENTITY, OFFSET, PAGE_LIMIT, EVENT } from '../constants';
 import { COMMAND_ALIASES, COMMAND_STATUS, RAW_COMMANDS } from '../constants/deviceCommand';
 import { getDevice } from '../dao/deviceDao';
 import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand, getLastAcknowledgedRelayCommand } from '../dao/deviceCommandDao';
 import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
 import { getSocket } from '../gps/socketRegistry';
 import { CustomError } from '../utils';
-import { getDeviceState, updateDeviceState } from '../dao';
+import { createEvent, getDeviceAssetMap, getDeviceState, updateDeviceState } from '../dao';
 
 // Auto-incrementing serial counter (wraps at 65535)
 let _serialCounter = 0;
@@ -149,6 +149,19 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     }
     await updateDeviceState(deviceState, { relay_status: relayStatus });
     // Updat Device State
+
+    // Create Event
+    const deviceAssetMap = await getDeviceAssetMap({ device_id: id }, ['asset_id']);
+    const assetId = deviceAssetMap?.asset_id || null;
+    await createEvent({
+      user_id: device.owner_id,
+      asset_id: assetId,
+      type: relayStatus ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
+      latitude: deviceState.latitude,
+      longitude: deviceState.longitude,
+      metadata: null,
+      event_at: sentAt
+    });
 
     logger.info(
       `GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`

@@ -171,6 +171,10 @@ export const TEST_NUMBERS = [
 ]
 
 export const EVENT = Object.freeze({
+  // Device Command
+  RELAY_ON: 'RELAY_ON',
+  RELAY_OFF: 'RELAY_OFF',
+
   // Geofence
   GEOFENCE_ENTER: 'GEOFENCE_ENTER',
   GEOFENCE_EXIT: 'GEOFENCE_EXIT',
