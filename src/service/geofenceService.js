@@ -200,7 +200,7 @@ export const mapAssetToGeofenceService = async (id, asset_id, user_id) => {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ASSET_NOT_OWNER);
   }
   //Check if the device is already mapped to an geofence
-  const existingMap = await getAssetGeofenceMap({ asset_id });
+  const existingMap = await getAssetGeofenceMap({ asset_id, geofence_id: id });
   if (existingMap) {
     throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.ASSET_ALREADY_MAPPED_TO_GEOFENCE);
   }
