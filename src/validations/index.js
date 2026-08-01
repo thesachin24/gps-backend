@@ -9,3 +9,4 @@ export { deviceLocation } from './deviceLocation';
 export { device } from './device';
 export { asset } from './asset';
 export { geofence } from './geofence';
+export { event } from './event';

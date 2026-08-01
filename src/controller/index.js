@@ -5,3 +5,4 @@ export * from './deviceController';
 export * from './assetController';
 export * from './geofenceController';
 export * from './commonController';
+export * from './eventController';
