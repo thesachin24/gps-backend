@@ -220,7 +220,7 @@ const buildBridgePayload = (deviceId, parsed, locationReverseGeocode) => ({
 const buildHeartbeatPayload = (deviceId, parsed) => ({
   device_id: deviceId,
   ignition: parsed?.heartbeat?.terminalInfoDecoded?.ignitionOn || null,
-  relay_status: parsed?.heartbeat?.terminalInfoDecoded?.armed || null,
+  // relay_status: parsed?.heartbeat?.terminalInfoDecoded?.armed || null,
   battery_level: parsed?.heartbeat?.batteryLevel || null,
   gsm_signal_strength: parsed?.heartbeat?.gsmSignalStrength || null,
   gsm_signal: parsed?.heartbeat?.gsmSignal || null,
@@ -309,17 +309,17 @@ class GpsTcpListener {
       publishGpsToMqtt(topic, payload);
     }
 
-    if (parsed?.commandResponse) {
-      void handleCommandResponse({ deviceId, parsed });
-    }
+    // if (parsed?.commandResponse) {
+      // void handleCommandResponse({ deviceId, parsed });
+    // }
 
-    if (parsed?.type === 'relay_event') {
-      void handleRelayEvent({ deviceId, parsed });
-    }
+    // if (parsed?.type === 'relay_event') {
+    //   void handleRelayEvent({ deviceId, parsed });
+    // }
 
-    if (parsed?.deviceStatus) {
-      void handleDeviceStatus({ deviceId, parsed });
-    }
+    // if (parsed?.deviceStatus) {
+    //   void handleDeviceStatus({ deviceId, parsed });
+    // }
 
     if (parsed?.type === 'lbs_report') {
       void handleLbsReport({ deviceId, parsed });
