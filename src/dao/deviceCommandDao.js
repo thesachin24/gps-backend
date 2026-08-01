@@ -65,6 +65,10 @@ export const getLastAcknowledgedRelayCommand = deviceStringId =>
       device_string_id: deviceStringId,
       command: {
         [require('sequelize').Op.in]: [
+          'DYD,000000#',
+          'HFYD,000000#',
+          'DYD#',
+          'HFYD#',
           'RELAY,1',
           'RELAY,0',
           'RELAY,1#',

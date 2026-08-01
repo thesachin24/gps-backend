@@ -17,9 +17,16 @@ export const COMMAND_ALIASES = Object.freeze({
  * Trailing `#` is required (SMS-compatible command content).
  */
 export const RAW_COMMANDS = Object.freeze({
-  // Relay / immobilizer — Traccar-compatible casing (most GT06 clones)
-  RELAY_ON: 'Relay,1#',
-  RELAY_OFF: 'Relay,0#',
+  // ET06 / Concox oil-electricity cut (protocol V1.8 §6.4 / §6.5)
+  // Reply is protocol 0x15 string, e.g. "DYD=Success!" / "HFYD=Success!"
+  RELAY_ON: 'DYD,000000#',
+  RELAY_OFF: 'HFYD,000000#',
+  // Aliases without password (also valid per protocol examples)
+  DYD: 'DYD#',
+  HFYD: 'HFYD#',
+  // Older GT06 clones (Traccar default)
+  RELAY_ON_ALT: 'Relay,1#',
+  RELAY_OFF_ALT: 'Relay,0#',
 
   // Query current device status (returns terminalInfo + relay state on many devices)
   CHECK: 'CHECK#',
@@ -62,12 +69,15 @@ export const COMMAND_STATUS = Object.freeze({
  * Different firmware versions return slightly different strings.
  */
 export const RELAY_ON_RESPONSES = Object.freeze([
+  'dyd=success',
+  'dyd=Success',
   'relay,1',
   'relay on',
   'relay open',
   'armed',
   'cut off',
   'cut off the fuel',
+  'fuel supply cut',
   'acc off',
   'oil cut',
   'dy1'
@@ -77,6 +87,8 @@ export const RELAY_ON_RESPONSES = Object.freeze([
  * Command response strings that indicate relay is OFF (engine restored).
  */
 export const RELAY_OFF_RESPONSES = Object.freeze([
+  'hfyd=success',
+  'hfyd=Success',
   'relay,0',
   'relay off',
   'relay close',
@@ -85,6 +97,5 @@ export const RELAY_OFF_RESPONSES = Object.freeze([
   'resume',
   'acc on',
   'oil resume',
-  'hfyd',
   'dy0'
 ]);

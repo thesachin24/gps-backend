@@ -614,24 +614,29 @@ const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
 
 /**
  * Build a GT06 server-to-device command packet (protocol 0x80).
- * Layout matches Concox / Traccar:
- *   78 78 [length] 80 [4+cmdLen] [serverFlag:4] [ASCII cmd…] [serial:2] [crc:2] 0D 0A
+ * Layout matches Concox / Traccar (with language bytes):
+ *   78 78 [length] 80 [4+cmdLen] [serverFlag:4] [ASCII cmd…] [lang:2] [serial:2] [crc:2] 0D 0A
  *
- * ASCII content should be SMS-compatible, e.g. "RELAY,1#" (trailing # included).
+ * ASCII content should be SMS-compatible, e.g. "Relay,1#" (trailing # included).
  *
- * @param {string} command   ASCII command string e.g. "RELAY,1#"
+ * @param {string} command   ASCII command string e.g. "Relay,1#"
  * @param {number} serial    2-byte serial number (0–65535)
  * @param {Buffer} [serverFlag]  4-byte server flag echoed back in 0x17 ACK
+ * @param {{ language?: boolean }} [options]  include English language marker (default true)
  * @returns {{ hex: string, buffer: Buffer, serverFlagHex: string, serial: number }}
  */
-export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null) => {
+export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null, options = {}) => {
+  const { language = true } = options;
   const cmdBuf = Buffer.from(String(command), 'ascii');
   const flag = serverFlag && Buffer.isBuffer(serverFlag) && serverFlag.length === 4
     ? serverFlag
     : Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
 
-  // length = protocol(1) + cmdInfoLen(1) + serverFlag(4) + cmd(N) + serial(2) + crc(2)
-  const lengthByte = 1 + 1 + 4 + cmdBuf.length + 2 + 2;
+  // 0x0002 = English — required by many Concox / GT06 clones (Traccar default when language enabled)
+  const langBuf = language ? Buffer.from([0x00, 0x02]) : Buffer.alloc(0);
+
+  // length = protocol(1) + cmdInfoLen(1) + serverFlag(4) + cmd(N) + lang(0|2) + serial(2) + crc(2)
+  const lengthByte = 1 + 1 + 4 + cmdBuf.length + langBuf.length + 2 + 2;
   const serialHi = (serial >> 8) & 0xff;
   const serialLo = serial & 0xff;
 
@@ -639,6 +644,7 @@ export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null) =
     Buffer.from([lengthByte, 0x80, 4 + cmdBuf.length]),
     flag,
     cmdBuf,
+    langBuf,
     Buffer.from([serialHi, serialLo])
   ]);
 
@@ -831,17 +837,24 @@ const parseGt06Payload = rawBuffer => {
       }
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
-  } else if (protocolNo === 0x17 || protocolNo === 0x15) {
-    // 0x17 = command response; some clones reply with 0x15 string info
+  } else if (protocolNo === 0x15 || protocolNo === 0x17) {
+    // ET06 V1.8 §6.2 — terminal command reply is 0x15 (same layout as 0x80):
+    //   [4+cmdLen] [serverFlag:4] [ASCII content] [language:2]
+    // (serial + crc sit after infoBuffer)
     if (infoBuffer.length >= 5) {
-      const serverFlag = infoBuffer.subarray(0, 4).toString('hex');
-      const contentLength = infoBuffer[4];
-      let contentBuf =
-        infoBuffer.length >= 5 + contentLength
-          ? infoBuffer.subarray(5, 5 + contentLength)
-          : infoBuffer.subarray(5);
+      const cmdInfoLen = infoBuffer[0];
+      const serverFlag = infoBuffer.subarray(1, 5).toString('hex');
+      const contentLen = Math.max(0, cmdInfoLen - 4);
+      let contentEnd = 5 + contentLen;
+      // Language (2 bytes) may follow content inside info
+      if (contentEnd + 2 <= infoBuffer.length) {
+        // leave language in place; content is only contentLen bytes
+      } else if (contentEnd > infoBuffer.length) {
+        contentEnd = infoBuffer.length;
+      }
+      let contentBuf = infoBuffer.subarray(5, Math.min(5 + contentLen, infoBuffer.length));
 
-      // GT06 may prefix content with encoding: 0x01=ASCII, 0x02=UTF-16-BE
+      // Some firmwares prefix encoding 0x01=ASCII / 0x02=UTF-16
       let content = '';
       if (contentBuf.length > 1 && contentBuf[0] === 0x01) {
         content = contentBuf.subarray(1).toString('ascii').trim();
@@ -851,13 +864,20 @@ const parseGt06Payload = rawBuffer => {
         content = contentBuf.toString('ascii').replace(/\0/g, '').trim();
       }
 
+      const language =
+        5 + contentLen + 2 <= infoBuffer.length
+          ? infoBuffer.subarray(5 + contentLen, 5 + contentLen + 2).toString('hex')
+          : null;
+
       parsed.commandResponse = {
         serverFlag,
-        contentLength,
+        contentLength: contentLen,
         content,
+        language,
         raw: infoBuffer.toString('hex')
       };
-      parsed.protocol = parsed.protocol || 'command_response';
+      parsed.protocol = 'command_response';
+      parsed.type = 'command_response';
     } else {
       parsed.commandResponse = { raw: infoBuffer.toString('hex') };
     }

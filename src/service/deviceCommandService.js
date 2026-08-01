@@ -9,11 +9,80 @@ import {
 } from '../constants/deviceCommand';
 import { getDevice } from '../dao/deviceDao';
 import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand, getLastAcknowledgedRelayCommand } from '../dao/deviceCommandDao';
-import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
+import { buildGt06CommandPacket, parseGpsPayload } from '../gps/gpsPayloadParser';
 import { getSocket } from '../gps/socketRegistry';
-import { waitForCommandReply } from '../gps/commandAckWaiter';
+import { resolveCommandReply, waitForCommandReply } from '../gps/commandAckWaiter';
 import { CustomError } from '../utils';
 import { createDeviceState, createEvent, getDeviceAssetMap, getDeviceState, updateDeviceState } from '../dao';
+
+/**
+ * Sniff the same TCP socket while waiting for ACK.
+ * Logs every inbound chunk and resolves the waiter on 0x15/0x16/0x17.
+ * (Runs in parallel with tcpGpsListener's data handler.)
+ */
+const attachSocketReplySniffer = (socket, deviceId) => {
+  let buf = Buffer.alloc(0);
+
+  const onData = chunk => {
+    if (!chunk?.length) return;
+    logger.info(
+      `GT06 sniffer DATA → device=${deviceId} bytes=${chunk.length} hex=${chunk.toString('hex').slice(0, 160)}`
+    );
+    buf = Buffer.concat([buf, chunk]);
+
+    while (buf.length >= 5) {
+      let packet = null;
+      let consumed = 0;
+
+      if (buf[0] === 0x78 && buf[1] === 0x78) {
+        const need = buf[2] + 5;
+        if (buf.length < need) break;
+        packet = buf.subarray(0, need);
+        consumed = need;
+      } else if (buf[0] === 0x79 && buf[1] === 0x79 && buf.length >= 4) {
+        const need = buf.readUInt16BE(2) + 6;
+        if (buf.length < need) break;
+        packet = buf.subarray(0, need);
+        consumed = need;
+      } else {
+        buf = buf.subarray(1);
+        continue;
+      }
+
+      buf = buf.subarray(consumed);
+      const parsed = parseGpsPayload(packet);
+      if (!parsed || parsed.protocolNo === undefined) {
+        logger.warn(`GT06 sniffer unparsed packet → device=${deviceId} hex=${packet.toString('hex').slice(0, 96)}`);
+        continue;
+      }
+
+      logger.info(
+        `GT06 sniffer packet → device=${deviceId} proto=0x${Number(parsed.protocolNo).toString(16)} ` +
+          `type=${parsed.type} relayOn=${parsed.relayOn ?? 'n/a'} cmdResp=${!!parsed.commandResponse}`
+      );
+
+      if (parsed.commandResponse) {
+        resolveCommandReply(deviceId, { ...parsed.commandResponse, source: 'socket_sniffer' });
+      } else if (parsed.type === 'relay_event' && parsed.relayOn !== undefined && parsed.relayOn !== null) {
+        resolveCommandReply(deviceId, {
+          serverFlag: null,
+          content: parsed.relayOn ? (parsed.alarm?.alarmName || 'armed') : (parsed.alarm?.alarmName || 'disarmed'),
+          raw: parsed.rawHex || null,
+          source: 'socket_sniffer_relay'
+        });
+      }
+    }
+  };
+
+  socket.on('data', onData);
+  return () => {
+    try {
+      socket.removeListener('data', onData);
+    } catch (_) {
+      /* ignore */
+    }
+  };
+};
 
 // Auto-incrementing serial counter (wraps at 65535)
 let _serialCounter = 0;
@@ -50,10 +119,16 @@ const resolveCommand = command => {
   const typeCodeMap = {
     RELAY_ON: RAW_COMMANDS.RELAY_ON,
     RELAY_OFF: RAW_COMMANDS.RELAY_OFF,
-    RELAY1: RAW_COMMANDS.RELAY_ON,
-    RELAY0: RAW_COMMANDS.RELAY_OFF,
-    'RELAY,1': RAW_COMMANDS.RELAY_ON,
-    'RELAY,0': RAW_COMMANDS.RELAY_OFF,
+    DYD: RAW_COMMANDS.RELAY_ON,
+    HFYD: RAW_COMMANDS.RELAY_OFF,
+    'DYD,000000': RAW_COMMANDS.RELAY_ON,
+    'HFYD,000000': RAW_COMMANDS.RELAY_OFF,
+    RELAY1: RAW_COMMANDS.RELAY_ON_ALT,
+    RELAY0: RAW_COMMANDS.RELAY_OFF_ALT,
+    'RELAY,1': RAW_COMMANDS.RELAY_ON_ALT,
+    'RELAY,0': RAW_COMMANDS.RELAY_OFF_ALT,
+    'RELAY,1#': RAW_COMMANDS.RELAY_ON_ALT,
+    'RELAY,0#': RAW_COMMANDS.RELAY_OFF_ALT,
     CHECK: RAW_COMMANDS.CHECK,
     PARAM: RAW_COMMANDS.PARAM,
     STATUS: RAW_COMMANDS.STATUS,
@@ -139,10 +214,9 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
   const socketRemote = `${socket.remoteAddress || '?'}:${socket.remotePort || '?'}`;
 
-  // Register ACK waiter BEFORE write so a fast 0x17 on the same socket is not missed.
-  // tcpGpsListener parses the reply and resolves this waiter (ack handled here only).
-  // 12s — clones often reply with 0x16 alarm a few seconds after Relay,1#
-  const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 12000);
+  // Register ACK waiter + socket sniffer BEFORE write
+  const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 15000);
+  const detachSniffer = attachSocketReplySniffer(socket, deviceStringId);
 
   try {
     await new Promise((resolve, reject) => {
@@ -156,13 +230,15 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
         `cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`
     );
 
-    // Await device 0x17 reply from the same TCP socket (via commandAckWaiter)
+    // Await device reply on the SAME socket (0x15/0x16/0x17)
     const reply = await replyPromise;
+    detachSniffer();
     const ackedAt = new Date();
 
     if (!reply) {
       logger.warn(
-        `GT06 command NO REPLY → id=${record.id} device=${deviceStringId} flag=${serverFlagHex} (still status=sent)`
+        `GT06 command NO REPLY → id=${record.id} device=${deviceStringId} flag=${serverFlagHex} ` +
+          `remote=${socketRemote} (check sniffer DATA logs — if none, device sent nothing / wrong process)`
       );
       return {
         message: MESSAGE_CONSTANTS.SUCCESS,
@@ -254,6 +330,11 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
       }
     };
   } catch (err) {
+    try {
+      detachSniffer();
+    } catch (_) {
+      /* ignore */
+    }
     await updateDeviceCommand(record, { status: COMMAND_STATUS.FAILED, sent_at: sentAt, error: err.message });
     throw new CustomError(SERVER_ERROR, `Failed to send command: ${err.message}`);
   }
