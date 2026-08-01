@@ -17,13 +17,14 @@ export const COMMAND_ALIASES = Object.freeze({
  * Trailing `#` is required (SMS-compatible command content).
  */
 export const RAW_COMMANDS = Object.freeze({
-  // ET06 / Concox oil-electricity cut (protocol V1.8 §6.4 / §6.5)
-  // Reply is protocol 0x15 string, e.g. "DYD=Success!" / "HFYD=Success!"
+  // ET06 V1.8 §6.4 / §6.5 — reply protocol 0x15 e.g. "DYD=Success!"
+  // Appendix online examples use password form DYD,000000#
   RELAY_ON: 'DYD,000000#',
   RELAY_OFF: 'HFYD,000000#',
-  // Aliases without password (also valid per protocol examples)
-  DYD: 'DYD#',
-  HFYD: 'HFYD#',
+  DYD: 'DYD,000000#',
+  HFYD: 'HFYD,000000#',
+  DYD_NOPASS: 'DYD#',
+  HFYD_NOPASS: 'HFYD#',
   // Older GT06 clones (Traccar default)
   RELAY_ON_ALT: 'Relay,1#',
   RELAY_OFF_ALT: 'Relay,0#',

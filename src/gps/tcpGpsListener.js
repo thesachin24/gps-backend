@@ -388,6 +388,7 @@ class GpsTcpListener {
 
       socket.on('data', chunk => {
         try {
+          socket._gpsLastDataAt = Date.now();
           const hex = chunk.toString('hex');
 
           // console.log('RAW HEX:', hex);

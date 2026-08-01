@@ -613,26 +613,28 @@ const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
 };
 
 /**
- * Build a GT06 server-to-device command packet (protocol 0x80).
- * Layout matches Concox / Traccar (with language bytes):
- *   78 78 [length] 80 [4+cmdLen] [serverFlag:4] [ASCII cmd…] [lang:2] [serial:2] [crc:2] 0D 0A
+ * Build a GT06 / ET06 server-to-device command packet (protocol 0x80).
  *
- * ASCII content should be SMS-compatible, e.g. "Relay,1#" (trailing # included).
+ * ET06 V1.8 appendix working example (NO language bytes before serial):
+ *   78 78 [length] 80 [4+cmdLen] [serverFlag:4] [ASCII cmd…] [serial:2] [crc:2] 0D 0A
  *
- * @param {string} command   ASCII command string e.g. "Relay,1#"
+ * Spec §6.1 also allows optional [lang:2] before serial — enable with { language: true }.
+ *
+ * @param {string} command   ASCII e.g. "DYD,000000#" / "HFYD,000000#"
  * @param {number} serial    2-byte serial number (0–65535)
- * @param {Buffer} [serverFlag]  4-byte server flag echoed back in 0x17 ACK
- * @param {{ language?: boolean }} [options]  include English language marker (default true)
+ * @param {Buffer} [serverFlag]  4-byte server flag echoed back in 0x15 ACK
+ * @param {{ language?: boolean }} [options]
  * @returns {{ hex: string, buffer: Buffer, serverFlagHex: string, serial: number }}
  */
 export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null, options = {}) => {
-  const { language = true } = options;
+  // Default false — matches ET06 appendix online examples (DYD/HFYD)
+  const { language = false } = options;
   const cmdBuf = Buffer.from(String(command), 'ascii');
   const flag = serverFlag && Buffer.isBuffer(serverFlag) && serverFlag.length === 4
     ? serverFlag
     : Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
 
-  // 0x0002 = English — required by many Concox / GT06 clones (Traccar default when language enabled)
+  // 0x0002 = English (only if language:true)
   const langBuf = language ? Buffer.from([0x00, 0x02]) : Buffer.alloc(0);
 
   // length = protocol(1) + cmdInfoLen(1) + serverFlag(4) + cmd(N) + lang(0|2) + serial(2) + crc(2)

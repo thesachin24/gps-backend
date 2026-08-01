@@ -22,9 +22,11 @@ import { createDeviceState, createEvent, getDeviceAssetMap, getDeviceState, upda
  */
 const attachSocketReplySniffer = (socket, deviceId) => {
   let buf = Buffer.alloc(0);
+  let bytesSeen = 0;
 
   const onData = chunk => {
     if (!chunk?.length) return;
+    bytesSeen += chunk.length;
     logger.info(
       `GT06 sniffer DATA → device=${deviceId} bytes=${chunk.length} hex=${chunk.toString('hex').slice(0, 160)}`
     );
@@ -75,12 +77,15 @@ const attachSocketReplySniffer = (socket, deviceId) => {
   };
 
   socket.on('data', onData);
-  return () => {
-    try {
-      socket.removeListener('data', onData);
-    } catch (_) {
-      /* ignore */
-    }
+  return {
+    detach: () => {
+      try {
+        socket.removeListener('data', onData);
+      } catch (_) {
+        /* ignore */
+      }
+    },
+    getBytesSeen: () => bytesSeen
   };
 };
 
@@ -186,9 +191,12 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
   const serial = nextSerial() || 1;
   const sentAt = new Date();
+  // language:false matches ET06 V1.8 appendix online packets (DYD/HFYD)
   const { buffer: packetBuffer, hex: packetHex, serverFlagHex } = buildGt06CommandPacket(
     resolvedCommand,
-    serial
+    serial,
+    null,
+    { language: false }
   );
 
   // Log as PENDING before touching the socket
@@ -213,10 +221,17 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
   }
 
   const socketRemote = `${socket.remoteAddress || '?'}:${socket.remotePort || '?'}`;
+  const lastDataAgeMs = socket._gpsLastDataAt ? Date.now() - socket._gpsLastDataAt : null;
+  if (lastDataAgeMs != null && lastDataAgeMs > 5 * 60 * 1000) {
+    logger.warn(
+      `GT06 socket may be stale → device=${deviceStringId} remote=${socketRemote} ` +
+        `lastDataAgeMs=${lastDataAgeMs}`
+    );
+  }
 
   // Register ACK waiter + socket sniffer BEFORE write
   const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 15000);
-  const detachSniffer = attachSocketReplySniffer(socket, deviceStringId);
+  const sniffer = attachSocketReplySniffer(socket, deviceStringId);
 
   try {
     await new Promise((resolve, reject) => {
@@ -227,18 +242,21 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
     logger.info(
       `GT06 command SENT on socket → device=${deviceStringId} remote=${socketRemote} ` +
-        `cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`
+        `cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} ` +
+        `lastDataAgeMs=${lastDataAgeMs ?? 'never'} hex=${packetHex}`
     );
 
-    // Await device reply on the SAME socket (0x15/0x16/0x17)
+    // Await device reply on the SAME socket (0x15 / relay_event)
     const reply = await replyPromise;
-    detachSniffer();
+    sniffer.detach();
     const ackedAt = new Date();
+    const bytesSeen = sniffer.getBytesSeen();
 
     if (!reply) {
       logger.warn(
         `GT06 command NO REPLY → id=${record.id} device=${deviceStringId} flag=${serverFlagHex} ` +
-          `remote=${socketRemote} (check sniffer DATA logs — if none, device sent nothing / wrong process)`
+          `remote=${socketRemote} snifferBytes=${bytesSeen} ` +
+          `(0 bytes => device silent on this socket; >0 => see sniffer packet logs)`
       );
       return {
         message: MESSAGE_CONSTANTS.SUCCESS,
@@ -251,6 +269,7 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
           response: null,
           acked_at: null,
           replied_on_same_socket: false,
+          sniffer_bytes: bytesSeen,
           serial,
           server_flag: serverFlagHex,
           packet_hex: packetHex,
@@ -331,7 +350,7 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     };
   } catch (err) {
     try {
-      detachSniffer();
+      sniffer.detach();
     } catch (_) {
       /* ignore */
     }
