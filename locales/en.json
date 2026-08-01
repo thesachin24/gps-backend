@@ -9,6 +9,10 @@
 	"OVERSPEED": {
 		"SUBJECT": "{{vehicle_name}} • {{event_title}}",
 		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} has {{event_body}} at {{time}}."
+	},
+	"GEOFENCE": {
+		"SUBJECT": "{{vehicle_name}} • {{event_title}}",
+		"NOTIFICATION": "{{device_name}}'s {{vehicle_name}} has {{event_body}} at {{time}}."
 	}
 }
 	
