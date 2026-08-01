@@ -81,6 +81,11 @@ const readDelimitedMessages = buffer => {
 };
 
 async function getLocationReverseGeocode(latitude, longitude) {
+  const empty = { location: null, address: null };
+  if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+    return empty;
+  }
+
   try {
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/reverse",
@@ -94,17 +99,20 @@ async function getLocationReverseGeocode(latitude, longitude) {
           "accept-language": "en",
         },
         headers: {
-          "User-Agent": "MyApp/1.0",
+          "User-Agent": "MyApp/1.0 (gps-backend)",
         },
+        timeout: 5000
       }
     );
-    const data = response.data;
-    // console.log('LOCATION REVERSE GEOCODE:', data);
+    const data = response.data || {};
     return {
       location: data.address || null,
       address: data.display_name || null
     };
-  } catch (error) {}
+  } catch (error) {
+    logger.warn(`Reverse geocode failed: ${error.message} lat=${latitude} lon=${longitude}`);
+    return empty;
+  }
 }
 
 const inferDeviceId = (parsed, rawMessage, socket) => {
@@ -260,7 +268,8 @@ class GpsTcpListener {
     if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
 
       // Get Location Reverse Geocode
-      const { location, address } = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude);
+      const { location, address } = await getLocationReverseGeocode(parsed?.latitude, parsed?.longitude) || {};
+
       // console.log('LOCATION REVERSE GEOCODE:', location, address);
       // Publish GPS location to MQTT bridge
       const payload = buildBridgePayload(deviceId, parsed, { location, address });

@@ -353,8 +353,9 @@ export const saveGpsLocation = async ({
   transport,
   source,
   metadata,
-  locationReverseGeocode: { location, address }
+  locationReverseGeocode = {}
 }) => {
+  const { location = null, address = null } = locationReverseGeocode || {};
   if (!deviceId || !isValidFix(parsed)) {
     logger.info(`GPS persist skipped: invalid fix payload deviceId=${deviceId || 'unknown'} parsed=${JSON.stringify(parsed || {})}`);
     return null;
