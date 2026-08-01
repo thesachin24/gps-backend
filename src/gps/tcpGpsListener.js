@@ -99,7 +99,7 @@ async function getLocationReverseGeocode(latitude, longitude) {
       }
     );
     const data = response.data;
-    console.log('LOCATION REVERSE GEOCODE:', data);
+    // console.log('LOCATION REVERSE GEOCODE:', data);
     return {
       location: data.address,
       address: data.display_name || null
