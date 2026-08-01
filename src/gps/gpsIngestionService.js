@@ -273,6 +273,8 @@ const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState
   });
   const mappedIds = (maps?.rows || []).map(row => row.geofence_id);
   const geofences = await getGeofencesByIds(mappedIds);
+  console.log('GEOFENCES:----------->', geofences);
+  console.log('MAPPED IDS:----------->', mappedIds);
 
   const activeGeofenceIds = [];
   const geofenceById = new Map();
@@ -283,7 +285,7 @@ const _captureAllEventsFromDevice = async (telemetryPayload, device, deviceState
     }
   }
   const currentGeofenceIds = new Set(activeGeofenceIds);
-
+  console.log('CURRENT GEOFENCE IDS:----------->', currentGeofenceIds);
   const nextState = {
     overspeeding: isOverspeeding,
     active_geofence_ids: activeGeofenceIds

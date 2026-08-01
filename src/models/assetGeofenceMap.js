@@ -23,10 +23,10 @@ const AssetGeofenceMap = sequelize.define(
       defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       type: Sequelize.DATE,
     },
-    removed_at: {
-      allowNull: true,
-      type: Sequelize.DATE,
-    },
+    // removed_at: {
+    //   allowNull: true,
+    //   type: Sequelize.DATE,
+    // },
   },
   {
     tableName: 'asset_geofence_map',
