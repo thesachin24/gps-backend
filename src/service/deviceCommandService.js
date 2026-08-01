@@ -155,6 +155,7 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     const assetId = deviceAssetMap?.asset_id || null;
     await createEvent({
       user_id: device.owner_id,
+      device_id: id,
       asset_id: assetId,
       type: relayStatus ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
       latitude: deviceState.latitude,
