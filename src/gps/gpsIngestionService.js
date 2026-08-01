@@ -198,7 +198,7 @@ export const saveHeartbeat = async ({ deviceId, parsed }) => {
       metadata: null,
       event_at: new Date()
     });
-    
+
     }
     // Send push notification to the user
 
@@ -222,7 +222,13 @@ const _emitDeviceEvent = async ({ type, device, asset, telemetryPayload, metadat
   });
 
   const eventCopy = copy || EVENT_COPY[type] || { title: type, body: type };
-  void _notify(NOTIFY.EVENT_OCCURRED, device.owner_id, {
+  let notifyType = null;
+  if(type === EVENT.OVERSPEED) {
+    notifyType = NOTIFY.OVERSPEED;
+  } else if(type === EVENT.GEOFENCE_ENTER || type === EVENT.GEOFENCE_EXIT) {
+    notifyType = NOTIFY.GEOFENCE;
+  }
+  void _notify(notifyType, device.owner_id, {
     device_name: device.device_name,
     type: type,
     event_title: eventCopy.title,
