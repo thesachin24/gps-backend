@@ -101,7 +101,7 @@ async function getLocationReverseGeocode(latitude, longitude) {
     const data = response.data;
     // console.log('LOCATION REVERSE GEOCODE:', data);
     return {
-      location: data.address,
+      location: data.address || null,
       address: data.display_name || null
     };
   } catch (error) {}
