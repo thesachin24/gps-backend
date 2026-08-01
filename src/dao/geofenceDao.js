@@ -1,6 +1,9 @@
 import { Op } from 'sequelize';
 import { GEOFENCE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
 import geofenceModel from '../models/geofence';
+import AssetGeofenceMap from '../models/assetGeofenceMap';
+import Geofence from '../models/geofence';
+import Asset from '../models/asset';
 
 export const getGeofenceList = (filter, page, pageSize, order = []) =>
   geofenceModel.findAndCountAll({
@@ -8,6 +11,13 @@ export const getGeofenceList = (filter, page, pageSize, order = []) =>
     offset: page * pageSize || OFFSET,
     limit: pageSize || PAGE_LIMIT,
     where: filter,
+    include: [
+      {
+        model: AssetGeofenceMap,
+        as: 'asset_geofence',
+        attributes: ['id', 'geofence_id', 'asset_id', 'created_at', 'updated_at'],
+      }
+    ],
     order: order.length ? [order] : [['id', 'DESC']]
   });
 

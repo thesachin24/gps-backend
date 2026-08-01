@@ -1,6 +1,7 @@
 import Sequelize from "sequelize";
 import sequelize from "./index";
 import { GEOFENCE_TYPE } from "../constants";
+import AssetGeofenceMap from "./assetGeofenceMap";
 
 const Geofence = sequelize.define(
   "geofences",
@@ -102,4 +103,6 @@ const Geofence = sequelize.define(
   },
 );
 
+Geofence.hasOne(AssetGeofenceMap, { foreignKey: 'geofence_id', as: 'asset_geofence' });
+AssetGeofenceMap.belongsTo(Geofence, { foreignKey: 'geofence_id', as: 'geofence' });
 export default Geofence;
