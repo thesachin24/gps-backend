@@ -67,8 +67,10 @@ export const RELAY_ON_RESPONSES = Object.freeze([
   'relay open',
   'armed',
   'cut off',
+  'cut off the fuel',
   'acc off',
-  'oil cut'
+  'oil cut',
+  'dy1'
 ]);
 
 /**
@@ -79,7 +81,10 @@ export const RELAY_OFF_RESPONSES = Object.freeze([
   'relay off',
   'relay close',
   'disarmed',
+  'restore',
   'resume',
   'acc on',
-  'oil resume'
+  'oil resume',
+  'hfyd',
+  'dy0'
 ]);

@@ -6,7 +6,7 @@ import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDevi
 import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
 import { getSocket } from '../gps/socketRegistry';
 import { CustomError } from '../utils';
-import { createEvent, getDeviceAssetMap, getDeviceState, updateDeviceState } from '../dao';
+import { createDeviceState, createEvent, getDeviceAssetMap, getDeviceState, updateDeviceState } from '../dao';
 
 // Auto-incrementing serial counter (wraps at 65535)
 let _serialCounter = 0;
@@ -130,8 +130,6 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
   }
 
-  const deviceState = await getDeviceState({ device_id: id });
-
   // Write binary 0x80 packet to the TCP socket (device ACKs via 0x17)
   try {
     await new Promise((resolve, reject) => {
@@ -140,29 +138,35 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
     await updateDeviceCommand(record, { status: COMMAND_STATUS.SENT, sent_at: sentAt });
 
-    // Updat Device State
-    let relayStatus = null;
-    if(resolvedCommand === RAW_COMMANDS.RELAY_ON) {
-      relayStatus = true;
-    } else if(resolvedCommand === RAW_COMMANDS.RELAY_OFF) {
-      relayStatus = false;
-    }
-    await updateDeviceState(deviceState, { relay_status: relayStatus });
-    // Updat Device State
+    // Optimistic relay update only for RELAY commands.
+    // Final confirmation still comes from device 0x17 → handleCommandResponse.
+    const isRelayOnCmd = resolvedCommand === RAW_COMMANDS.RELAY_ON;
+    const isRelayOffCmd = resolvedCommand === RAW_COMMANDS.RELAY_OFF;
+    if (isRelayOnCmd || isRelayOffCmd) {
+      let deviceState = await getDeviceState({ device_id: id });
+      if (!deviceState) {
+        deviceState = await createDeviceState({ device_id: id });
+      }
+      await updateDeviceState(deviceState, {
+        relay_status: isRelayOnCmd,
+        updated_at: new Date()
+      });
 
-    // Create Event
-    const deviceAssetMap = await getDeviceAssetMap({ device_id: id }, ['asset_id']);
-    const assetId = deviceAssetMap?.asset_id || null;
-    await createEvent({
-      user_id: device.owner_id,
-      device_id: id,
-      asset_id: assetId,
-      type: relayStatus ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
-      latitude: deviceState.latitude,
-      longitude: deviceState.longitude,
-      metadata: null,
-      event_at: sentAt
-    });
+      const deviceAssetMap = await getDeviceAssetMap({ device_id: id }, ['asset_id']);
+      const assetId = deviceAssetMap?.asset_id || null;
+      if (assetId) {
+        await createEvent({
+          user_id: device.owner_id,
+          device_id: id,
+          asset_id: assetId,
+          type: isRelayOnCmd ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
+          latitude: deviceState.latitude,
+          longitude: deviceState.longitude,
+          metadata: { source: 'command_sent', command: resolvedCommand },
+          event_at: sentAt
+        });
+      }
+    }
 
     logger.info(
       `GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`

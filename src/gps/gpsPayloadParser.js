@@ -831,20 +831,33 @@ const parseGt06Payload = rawBuffer => {
       }
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
-  } else if (protocolNo === 0x17) {
+  } else if (protocolNo === 0x17 || protocolNo === 0x15) {
+    // 0x17 = command response; some clones reply with 0x15 string info
     if (infoBuffer.length >= 5) {
       const serverFlag = infoBuffer.subarray(0, 4).toString('hex');
       const contentLength = infoBuffer[4];
-      const content =
+      let contentBuf =
         infoBuffer.length >= 5 + contentLength
-          ? infoBuffer.subarray(5, 5 + contentLength).toString('ascii').trim()
-          : '';
+          ? infoBuffer.subarray(5, 5 + contentLength)
+          : infoBuffer.subarray(5);
+
+      // GT06 may prefix content with encoding: 0x01=ASCII, 0x02=UTF-16-BE
+      let content = '';
+      if (contentBuf.length > 1 && contentBuf[0] === 0x01) {
+        content = contentBuf.subarray(1).toString('ascii').trim();
+      } else if (contentBuf.length > 2 && contentBuf[0] === 0x02) {
+        content = contentBuf.subarray(1).toString('utf16le').replace(/\0/g, '').trim();
+      } else {
+        content = contentBuf.toString('ascii').replace(/\0/g, '').trim();
+      }
+
       parsed.commandResponse = {
         serverFlag,
         contentLength,
         content,
         raw: infoBuffer.toString('hex')
       };
+      parsed.protocol = parsed.protocol || 'command_response';
     } else {
       parsed.commandResponse = { raw: infoBuffer.toString('hex') };
     }

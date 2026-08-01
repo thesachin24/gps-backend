@@ -309,17 +309,17 @@ class GpsTcpListener {
       publishGpsToMqtt(topic, payload);
     }
 
-    // if (parsed?.commandResponse) {
-      // void handleCommandResponse({ deviceId, parsed });
-    // }
+    if (parsed?.commandResponse) {
+      void handleCommandResponse({ deviceId, parsed });
+    }
 
-    // if (parsed?.type === 'relay_event') {
-    //   void handleRelayEvent({ deviceId, parsed });
-    // }
+    if (parsed?.type === 'relay_event') {
+      void handleRelayEvent({ deviceId, parsed });
+    }
 
-    // if (parsed?.deviceStatus) {
-    //   void handleDeviceStatus({ deviceId, parsed });
-    // }
+    if (parsed?.deviceStatus) {
+      void handleDeviceStatus({ deviceId, parsed });
+    }
 
     if (parsed?.type === 'lbs_report') {
       void handleLbsReport({ deviceId, parsed });
