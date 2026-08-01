@@ -15,7 +15,7 @@ export const getGeofenceList = (filter, page, pageSize, order = []) =>
       {
         model: AssetGeofenceMap,
         as: 'asset_geofence',
-        attributes: ['id', 'geofence_id', 'asset_id', 'created_at', 'updated_at'],
+        attributes: ['id', 'geofence_id', 'asset_id', 'created_at'],
       }
     ],
     order: order.length ? [order] : [['id', 'DESC']]
