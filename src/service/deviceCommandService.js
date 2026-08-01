@@ -1,6 +1,6 @@
 import logger from '../config/logger';
 import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, FORBIDDEN, UN_PROCESSABLE_ENTITY, OFFSET, PAGE_LIMIT } from '../constants';
-import { COMMAND_ALIASES, COMMAND_STATUS } from '../constants/deviceCommand';
+import { COMMAND_ALIASES, COMMAND_STATUS, RAW_COMMANDS } from '../constants/deviceCommand';
 import { getDevice } from '../dao/deviceDao';
 import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand, getLastAcknowledgedRelayCommand } from '../dao/deviceCommandDao';
 import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
@@ -14,21 +14,58 @@ const nextSerial = () => {
   return _serialCounter;
 };
 
+const withHash = ascii => {
+  const value = String(ascii || '').trim();
+  if (!value) return value;
+  return value.endsWith('#') ? value : `${value}#`;
+};
+
 /**
- * Resolve a friendly command alias to the raw GT06 ASCII command string.
+ * Resolve API command / type-code to GT06 ASCII content (with trailing #).
  *
- * GT06 relay semantics (standard engine-cut wiring):
- *   RELAY,1  →  Activate relay   →  Engine CUT      (scooter immobilised)
- *   RELAY,0  →  Deactivate relay  →  Engine RESTORED (scooter can move)
+ * Accepts:
+ *   RELAY_ON | relay_on | RELAY,1 | RELAY,1#  →  RELAY,1#
+ *   RELAY_OFF | relay_off | RELAY,0 | RELAY,0# → RELAY,0#
+ *
+ * GT06 relay semantics:
+ *   RELAY,1# → Activate relay → Engine CUT
+ *   RELAY,0# → Deactivate relay → Engine RESTORED
  */
 const resolveCommand = command => {
-  const aliasMap = {
-    [COMMAND_ALIASES.RELAY_ON]:  'RELAY,1',  // cut engine
-    [COMMAND_ALIASES.RELAY_OFF]: 'RELAY,0',  // restore engine
-    relay1: 'RELAY,1',
-    relay0: 'RELAY,0'
+  const raw = String(command || '').trim();
+  if (!raw) return '';
+
+  const normalized = raw.replace(/#$/, '').trim();
+  const upper = normalized.toUpperCase();
+  const lower = normalized.toLowerCase();
+
+  const typeCodeMap = {
+    RELAY_ON: RAW_COMMANDS.RELAY_ON,
+    RELAY_OFF: RAW_COMMANDS.RELAY_OFF,
+    RELAY1: RAW_COMMANDS.RELAY_ON,
+    RELAY0: RAW_COMMANDS.RELAY_OFF,
+    'RELAY,1': RAW_COMMANDS.RELAY_ON,
+    'RELAY,0': RAW_COMMANDS.RELAY_OFF,
+    CHECK: RAW_COMMANDS.CHECK,
+    PARAM: RAW_COMMANDS.PARAM,
+    STATUS: RAW_COMMANDS.STATUS,
+    WHERE: RAW_COMMANDS.WHERE,
+    RESET: RAW_COMMANDS.RESET,
+    TIME: RAW_COMMANDS.TIME_SYNC,
+    TIME_SYNC: RAW_COMMANDS.TIME_SYNC,
+    ALERT_ON: RAW_COMMANDS.ALERT_ON,
+    ALERT_OFF: RAW_COMMANDS.ALERT_OFF,
+    [COMMAND_ALIASES.RELAY_ON.toUpperCase()]: RAW_COMMANDS.RELAY_ON,
+    [COMMAND_ALIASES.RELAY_OFF.toUpperCase()]: RAW_COMMANDS.RELAY_OFF,
+    [COMMAND_ALIASES.STATUS.toUpperCase()]: RAW_COMMANDS.STATUS,
+    [COMMAND_ALIASES.PARAM.toUpperCase()]: RAW_COMMANDS.PARAM
   };
-  return aliasMap[String(command).toLowerCase()] || String(command).trim();
+
+  if (typeCodeMap[upper]) return typeCodeMap[upper];
+  if (typeCodeMap[lower.toUpperCase()]) return typeCodeMap[lower.toUpperCase()];
+
+  // Pass-through custom ASCII (ensure trailing # for GT06)
+  return withHash(normalized);
 };
 
 /**
@@ -60,11 +97,16 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
 
   const deviceStringId = device.device_id;
   const resolvedCommand = resolveCommand(command);
-  const serial = nextSerial();
-  const sentAt = new Date();
+  if (!resolvedCommand) {
+    throw new CustomError(UN_PROCESSABLE_ENTITY, 'Invalid command. Use type codes like RELAY_ON / RELAY_OFF.');
+  }
 
-  // const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(resolvedCommand, serial);
-  const { hex: packetHex, serverFlagHex } = buildGt06CommandPacket(command);
+  const serial = nextSerial() || 1;
+  const sentAt = new Date();
+  const { buffer: packetBuffer, hex: packetHex, serverFlagHex } = buildGt06CommandPacket(
+    resolvedCommand,
+    serial
+  );
 
   // Log as PENDING before touching the socket
   const record = await createDeviceCommand({
@@ -87,15 +129,17 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
     throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
   }
 
-  // Write to the TCP socket (one-way; device ACKs separately via 0x17)
+  // Write binary 0x80 packet to the TCP socket (device ACKs via 0x17)
   try {
     await new Promise((resolve, reject) => {
-      socket.write(Buffer.from(packetHex, 'hex'), err => (err ? reject(err) : resolve()));
+      socket.write(packetBuffer, err => (err ? reject(err) : resolve()));
     });
 
     await updateDeviceCommand(record, { status: COMMAND_STATUS.SENT, sent_at: sentAt });
 
-    logger.info(`GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex}`);
+    logger.info(
+      `GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`
+    );
 
     return {
       message: MESSAGE_CONSTANTS.SUCCESS,
@@ -107,6 +151,7 @@ export const sendDeviceCommand = async ({ deviceDbId, command, userId }) => {
         status: COMMAND_STATUS.SENT,
         serial,
         server_flag: serverFlagHex,
+        packet_hex: packetHex,
         sent_at: sentAt
       }
     };
@@ -149,7 +194,7 @@ export const logSmsRelay = async ({ deviceDbId, deviceStringId, relayOn, note, u
   if (!device) throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.DEVICE_NOT_FOUND);
   if (userId && device.owner_id !== userId) throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
 
-  const command = relayOn ? 'RELAY,1' : 'RELAY,0';
+  const command = relayOn ? RAW_COMMANDS.RELAY_ON : RAW_COMMANDS.RELAY_OFF;
   const record = await createDeviceCommand({
     device_id: deviceDbId,
     device_string_id: deviceStringId || device.device_id,
@@ -186,7 +231,8 @@ export const getDeviceCommandDetail = async ({ commandId, deviceDbId }) => {
  */
 export const getRelayStatus = async ({ deviceDbId, deviceStringId }) => {
   const record = await getLastAcknowledgedRelayCommand(deviceStringId);
-  const relayOn = record ? record.command === 'RELAY,1' : null;
+  const cmd = String(record?.command || '').replace(/#$/, '');
+  const relayOn = record ? cmd === 'RELAY,1' : null;
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
     data: {

@@ -614,28 +614,30 @@ const buildGt06AckHex = (protocolNo, serialNo, header = 0x7878) => {
 
 /**
  * Build a GT06 server-to-device command packet (protocol 0x80).
- * Packet layout (7878 frame):
- *   78 78 [length] 80 [serverFlag:4] [cmdLen:1] [cmd bytes] [serial:2] [crc:2] 0D 0A
+ * Layout matches Concox / Traccar:
+ *   78 78 [length] 80 [4+cmdLen] [serverFlag:4] [ASCII cmd…] [serial:2] [crc:2] 0D 0A
  *
- * @param {string} command   ASCII command string e.g. "RELAY,1"
+ * ASCII content should be SMS-compatible, e.g. "RELAY,1#" (trailing # included).
+ *
+ * @param {string} command   ASCII command string e.g. "RELAY,1#"
  * @param {number} serial    2-byte serial number (0–65535)
- * @param {Buffer} [serverFlag]  4-byte server flag; defaults to serial padded to 4 bytes
- * @returns {{ hex: string, serverFlagHex: string }}
+ * @param {Buffer} [serverFlag]  4-byte server flag echoed back in 0x17 ACK
+ * @returns {{ hex: string, buffer: Buffer, serverFlagHex: string, serial: number }}
  */
 export const buildGt06CommandPacket = (command, serial = 1, serverFlag = null) => {
   const cmdBuf = Buffer.from(String(command), 'ascii');
-  const cmdLen = cmdBuf.length;
-  const flag = serverFlag || Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
+  const flag = serverFlag && Buffer.isBuffer(serverFlag) && serverFlag.length === 4
+    ? serverFlag
+    : Buffer.from([0x00, 0x00, (serial >> 8) & 0xff, serial & 0xff]);
 
-  // length byte = protocol(1) + serverFlag(4) + cmdLen_byte(1) + cmd(N) + serial(2) + crc(2)
-  const lengthByte = 1 + 4 + 1 + cmdLen + 2 + 2;
+  // length = protocol(1) + cmdInfoLen(1) + serverFlag(4) + cmd(N) + serial(2) + crc(2)
+  const lengthByte = 1 + 1 + 4 + cmdBuf.length + 2 + 2;
   const serialHi = (serial >> 8) & 0xff;
   const serialLo = serial & 0xff;
 
   const bodyForCrc = Buffer.concat([
-    Buffer.from([lengthByte, 0x80]),
+    Buffer.from([lengthByte, 0x80, 4 + cmdBuf.length]),
     flag,
-    Buffer.from([cmdLen]),
     cmdBuf,
     Buffer.from([serialHi, serialLo])
   ]);

@@ -38,7 +38,9 @@ export const getLastAcknowledgedRelayCommand = deviceStringId =>
   DeviceCommand.findOne({
     where: {
       device_string_id: deviceStringId,
-      command: { [require('sequelize').Op.in]: ['RELAY,1', 'RELAY,0'] },
+      command: {
+        [require('sequelize').Op.in]: ['RELAY,1', 'RELAY,0', 'RELAY,1#', 'RELAY,0#']
+      },
       status: COMMAND_STATUS.ACKNOWLEDGED
     },
     order: [['acked_at', 'DESC']]

@@ -176,7 +176,7 @@ deviceRoutes.get('/:id/relay-status', authenticate, getRelayStatusHandler);
  * @swagger
  * /devices/{id}/commands:
  *   post:
- *     description: Send a command to the device (e.g. RELAY,1 to cut engine)
+ *     description: Send a command to the device. Body {"command":"RELAY_ON"} or {"command":"RELAY_OFF"} (ASCII type codes; server builds GT06 0x80 packet)
  *     security:
  *       - Bearer: []
  *     tags:
