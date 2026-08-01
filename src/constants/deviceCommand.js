@@ -72,13 +72,13 @@ export const COMMAND_STATUS = Object.freeze({
 export const RELAY_ON_RESPONSES = Object.freeze([
   'dyd=success',
   'dyd=Success',
+  'cut off the fuel supply',
+  'fuel supply cut',
   'relay,1',
   'relay on',
   'relay open',
   'armed',
   'cut off',
-  'cut off the fuel',
-  'fuel supply cut',
   'acc off',
   'oil cut',
   'dy1'
@@ -90,6 +90,8 @@ export const RELAY_ON_RESPONSES = Object.freeze([
 export const RELAY_OFF_RESPONSES = Object.freeze([
   'hfyd=success',
   'hfyd=Success',
+  'restore fuel supply',
+  'restore fuel',
   'relay,0',
   'relay off',
   'relay close',

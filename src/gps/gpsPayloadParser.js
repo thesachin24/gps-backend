@@ -445,14 +445,77 @@ const toProtocolName = protocolNo => {
     0x11: 'lbs',
     0x12: 'gps_lbs',
     0x13: 'heartbeat',
+    0x15: 'command_response',
     0x16: 'alarm',
     0x17: 'command_response',
+    0x21: 'string_info', // ET06 / JM extended string reply (often 7979)
     0x22: 'gps_lbs_extended',
     0x24: 'gps_lbs_status',
     0x80: 'server_response',
     0x94: 'information_transmission'
   };
   return names[protocolNo] || `protocol_${protocolNo}`;
+};
+
+/**
+ * Parse terminal string / command-reply info body.
+ * Supports:
+ *   A) ET06 0x15: [4+len][flag:4][content][lang:2?]
+ *   B) ET06 0x21: [flag:4][encoding:1][content…]  (encoding 0x01=ASCII)
+ */
+const parseCommandResponseInfo = (infoBuffer, layout = 'len_flag_content') => {
+  if (!infoBuffer || infoBuffer.length < 5) {
+    return { raw: infoBuffer ? infoBuffer.toString('hex') : '' };
+  }
+
+  if (layout === 'flag_encoding_content') {
+    // 0x21 observed: 00000001 01 "Restore fuel supply:Success!"
+    const serverFlag = infoBuffer.subarray(0, 4).toString('hex');
+    const encoding = infoBuffer[4];
+    const contentBuf = infoBuffer.subarray(5);
+    let content = '';
+    if (encoding === 0x01) {
+      content = contentBuf.toString('ascii').replace(/\0/g, '').trim();
+    } else if (encoding === 0x02) {
+      content = contentBuf.toString('utf16le').replace(/\0/g, '').trim();
+    } else {
+      // encoding byte might actually be start of ASCII
+      content = infoBuffer.subarray(4).toString('ascii').replace(/\0/g, '').trim();
+    }
+    return {
+      serverFlag,
+      contentLength: contentBuf.length,
+      content,
+      encoding,
+      raw: infoBuffer.toString('hex')
+    };
+  }
+
+  // Default 0x15 layout
+  const cmdInfoLen = infoBuffer[0];
+  const serverFlag = infoBuffer.subarray(1, 5).toString('hex');
+  const contentLen = Math.max(0, cmdInfoLen - 4);
+  const contentBuf = infoBuffer.subarray(5, Math.min(5 + contentLen, infoBuffer.length));
+  let content = '';
+  if (contentBuf.length > 1 && contentBuf[0] === 0x01) {
+    content = contentBuf.subarray(1).toString('ascii').trim();
+  } else if (contentBuf.length > 2 && contentBuf[0] === 0x02) {
+    content = contentBuf.subarray(1).toString('utf16le').replace(/\0/g, '').trim();
+  } else {
+    content = contentBuf.toString('ascii').replace(/\0/g, '').trim();
+  }
+  const language =
+    5 + contentLen + 2 <= infoBuffer.length
+      ? infoBuffer.subarray(5 + contentLen, 5 + contentLen + 2).toString('hex')
+      : null;
+
+  return {
+    serverFlag,
+    contentLength: contentLen,
+    content,
+    language,
+    raw: infoBuffer.toString('hex')
+  };
 };
 
 const decodeGt06DateTime = bytes => {
@@ -840,49 +903,17 @@ const parseGt06Payload = rawBuffer => {
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x15 || protocolNo === 0x17) {
-    // ET06 V1.8 §6.2 — terminal command reply is 0x15 (same layout as 0x80):
-    //   [4+cmdLen] [serverFlag:4] [ASCII content] [language:2]
-    // (serial + crc sit after infoBuffer)
-    if (infoBuffer.length >= 5) {
-      const cmdInfoLen = infoBuffer[0];
-      const serverFlag = infoBuffer.subarray(1, 5).toString('hex');
-      const contentLen = Math.max(0, cmdInfoLen - 4);
-      let contentEnd = 5 + contentLen;
-      // Language (2 bytes) may follow content inside info
-      if (contentEnd + 2 <= infoBuffer.length) {
-        // leave language in place; content is only contentLen bytes
-      } else if (contentEnd > infoBuffer.length) {
-        contentEnd = infoBuffer.length;
-      }
-      let contentBuf = infoBuffer.subarray(5, Math.min(5 + contentLen, infoBuffer.length));
-
-      // Some firmwares prefix encoding 0x01=ASCII / 0x02=UTF-16
-      let content = '';
-      if (contentBuf.length > 1 && contentBuf[0] === 0x01) {
-        content = contentBuf.subarray(1).toString('ascii').trim();
-      } else if (contentBuf.length > 2 && contentBuf[0] === 0x02) {
-        content = contentBuf.subarray(1).toString('utf16le').replace(/\0/g, '').trim();
-      } else {
-        content = contentBuf.toString('ascii').replace(/\0/g, '').trim();
-      }
-
-      const language =
-        5 + contentLen + 2 <= infoBuffer.length
-          ? infoBuffer.subarray(5 + contentLen, 5 + contentLen + 2).toString('hex')
-          : null;
-
-      parsed.commandResponse = {
-        serverFlag,
-        contentLength: contentLen,
-        content,
-        language,
-        raw: infoBuffer.toString('hex')
-      };
-      parsed.protocol = 'command_response';
-      parsed.type = 'command_response';
-    } else {
-      parsed.commandResponse = { raw: infoBuffer.toString('hex') };
-    }
+    // ET06 §6.2 — 0x15 reply: [4+len][flag:4][content][lang:2?]
+    parsed.commandResponse = parseCommandResponseInfo(infoBuffer, 'len_flag_content');
+    parsed.protocol = 'command_response';
+    parsed.type = 'command_response';
+    parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
+  } else if (protocolNo === 0x21) {
+    // ET06 extended string info (often 7979): [flag:4][encoding:1][ASCII…]
+    // Example: flag=00000001 enc=01 "Restore fuel supply:Success!"
+    parsed.commandResponse = parseCommandResponseInfo(infoBuffer, 'flag_encoding_content');
+    parsed.protocol = 'command_response';
+    parsed.type = 'command_response';
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else if (protocolNo === 0x94) {
     const information = decodeGt06InfoTransmission(infoBuffer);
