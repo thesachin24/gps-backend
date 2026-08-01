@@ -12,7 +12,7 @@ import {
 import { CustomError } from '../utils';
 
 export const getAllEvents = async payload => {
-  const { search, offset, limit, sortByName, type } = payload;
+  const { search, offset, limit, sortByName, type, asset_id } = payload;
   let { filter } = payload;
   let order = ['id', 'desc'];
 
@@ -40,6 +40,14 @@ export const getAllEvents = async payload => {
     };
   }
 
+  if (asset_id) {
+    filter = {
+      ...filter,
+      asset_id: {
+        [Sequelize.Op.eq]: asset_id
+      }
+    };
+  }
   try {
     const list = await getEventList(filter, offset, limit, order);
     return {

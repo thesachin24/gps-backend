@@ -12,7 +12,7 @@ import {
 
 export const getEventList = async (req, res) => {
   let {
-    query: { search, page, limit, sortByName, type },
+    query: { search, page, limit, sortByName, type, asset_id },
     auth: { user_id }
   } = req;
   page = +page || OFFSET;
@@ -25,7 +25,8 @@ export const getEventList = async (req, res) => {
       limit,
       sortByName,
       type,
-      filter
+      filter,
+      asset_id
     });
     return res.status(OK).json(eventList);
   } catch (err) {
