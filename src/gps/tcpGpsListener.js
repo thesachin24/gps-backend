@@ -4,7 +4,7 @@ import { parseGpsPayload, buildGt06AckHex } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
 import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
-import { hasActiveWaiter, resolveCommandReply } from './commandAckWaiter';
+import { resolveCommandReply } from './commandAckWaiter';
 import { getDevice } from '../dao';
 import axios from 'axios';
 
@@ -239,13 +239,8 @@ class GpsTcpListener {
   }
 
   async handleParsedMessage(socket, remote, rawMessage) {
-    const rawPayload = Buffer.isBuffer(rawMessage) ? rawMessage.toString('hex') : String(rawMessage);
     const parsed = parseGpsPayload(rawMessage);
-
-    if (!parsed) {
-      logger.warn(`GT06 packet not parsed remote=${remote} hex=${rawPayload.slice(0, 96)}`);
-      return;
-    }
+    if (!parsed) return;
 
     if (parsed?.imei) {
       socket._gpsDeviceId = String(parsed.imei);
@@ -256,15 +251,6 @@ class GpsTcpListener {
     // Register socket the first time we know the device ID
     if (deviceId && !deviceId.startsWith('tcp_')) {
       registerSocket(deviceId, socket);
-    }
-
-    // While sendDeviceCommand is waiting, log every inbound packet for that device
-    if (deviceId && hasActiveWaiter(deviceId)) {
-      logger.info(
-        `GT06 while waiting ACK → device=${deviceId} remote=${remote} ` +
-          `proto=0x${Number(parsed.protocolNo).toString(16)} type=${parsed.type} ` +
-          `relayOn=${parsed.relayOn ?? 'n/a'} hasCmdResp=${!!parsed.commandResponse}`
-      );
     }
 
     if (parsed?.protocol === 'gps_lbs' || parsed?.protocol === 'gps_lbs_extended' || parsed?.protocol === 'gps_lbs_status') {
@@ -313,17 +299,9 @@ class GpsTcpListener {
 
     const replyDeviceId = deviceId || socket._gpsDeviceId;
 
-    // 0x15 / 0x17 string reply
+    // 0x15 / 0x21 command string reply → resolve sendDeviceCommand waiter
     if (parsed?.commandResponse) {
-      logger.info(
-        `GT06 command REPLY (string) → device=${replyDeviceId || 'unknown'} ` +
-          `remote=${remote} flag=${parsed.commandResponse.serverFlag || 'n/a'} ` +
-          `content="${parsed.commandResponse.content || ''}"`
-      );
-      const delivered = resolveCommandReply(replyDeviceId, {
-        ...parsed.commandResponse,
-        source: 'command_response'
-      });
+      const delivered = resolveCommandReply(replyDeviceId, parsed.commandResponse);
       if (!delivered) {
         void handleCommandResponse({ deviceId: replyDeviceId, parsed }).catch(err => {
           logger.error(`handleCommandResponse failed: ${err.message}`);
@@ -331,20 +309,15 @@ class GpsTcpListener {
       }
     }
 
-    // Many GT06 clones ACK RELAY via 0x16/0x24 alarm (armed/disarmed), NOT 0x17
+    // 0x16 / 0x24 relay alarm can also complete a pending send
     if (parsed?.type === 'relay_event' && parsed.relayOn !== undefined && parsed.relayOn !== null) {
       const content = parsed.relayOn
         ? parsed.alarm?.alarmName || 'armed'
         : parsed.alarm?.alarmName || 'disarmed';
-      logger.info(
-        `GT06 command REPLY (relay_event) → device=${replyDeviceId || 'unknown'} ` +
-          `remote=${remote} relayOn=${parsed.relayOn} content="${content}"`
-      );
       const delivered = resolveCommandReply(replyDeviceId, {
         serverFlag: null,
         content,
-        raw: parsed.rawHex || null,
-        source: 'relay_event'
+        raw: parsed.rawHex || null
       });
       if (!delivered) {
         void handleRelayEvent({ deviceId: replyDeviceId, parsed });
@@ -388,7 +361,6 @@ class GpsTcpListener {
 
       socket.on('data', chunk => {
         try {
-          socket._gpsLastDataAt = Date.now();
           const hex = chunk.toString('hex');
 
           // console.log('RAW HEX:', hex);

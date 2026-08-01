@@ -930,11 +930,9 @@ const parseGt06Payload = rawBuffer => {
     }
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
   } else {
-    console.log('Else:-------->', protocolNo, infoBuffer.toString('hex'));
     parsed.type = 'unknown';
     parsed.rawHex = infoBuffer.toString('hex');
     parsed.ackHex = buildGt06AckHex(protocolNo, serialNo, header);
-    console.log('Parsed:-------->', parsed);
   }
 
   return parsed;
