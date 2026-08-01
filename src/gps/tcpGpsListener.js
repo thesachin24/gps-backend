@@ -4,6 +4,7 @@ import { parseGpsPayload, buildGt06AckHex } from './gpsPayloadParser';
 import { publishGpsToMqtt } from './mqttGpsPublisher';
 import { saveGpsLocation, saveHeartbeat, handleCommandResponse, handleRelayEvent, handleDeviceStatus, handleLbsReport } from './gpsIngestionService';
 import { registerSocket, unregisterSocket } from './socketRegistry';
+import { resolveCommandReply } from './commandAckWaiter';
 import { getDevice } from '../dao';
 import axios from 'axios';
 
@@ -310,7 +311,20 @@ class GpsTcpListener {
     }
 
     if (parsed?.commandResponse) {
-      void handleCommandResponse({ deviceId, parsed });
+      // Device 0x17 arrives on the SAME socket. Hand off to sendDeviceCommand waiter only.
+      const replyDeviceId = deviceId || socket._gpsDeviceId;
+      logger.info(
+        `GT06 command REPLY on same socket → device=${replyDeviceId || 'unknown'} ` +
+          `remote=${remote} flag=${parsed.commandResponse.serverFlag || 'n/a'} ` +
+          `content="${parsed.commandResponse.content || ''}"`
+      );
+      const delivered = resolveCommandReply(replyDeviceId, parsed.commandResponse);
+      if (!delivered) {
+        // No active sendDeviceCommand waiter (e.g. late/SMS-related reply)
+        void handleCommandResponse({ deviceId: replyDeviceId, parsed }).catch(err => {
+          logger.error(`handleCommandResponse failed: ${err.message}`);
+        });
+      }
     }
 
     if (parsed?.type === 'relay_event') {

@@ -1,10 +1,17 @@
 import logger from '../config/logger';
 import { MESSAGE_CONSTANTS, NOT_FOUND, SERVER_ERROR, FORBIDDEN, UN_PROCESSABLE_ENTITY, OFFSET, PAGE_LIMIT, EVENT } from '../constants';
-import { COMMAND_ALIASES, COMMAND_STATUS, RAW_COMMANDS } from '../constants/deviceCommand';
+import {
+  COMMAND_ALIASES,
+  COMMAND_STATUS,
+  RAW_COMMANDS,
+  RELAY_ON_RESPONSES,
+  RELAY_OFF_RESPONSES
+} from '../constants/deviceCommand';
 import { getDevice } from '../dao/deviceDao';
 import { createDeviceCommand, getDeviceCommandList, updateDeviceCommand, getDeviceCommand, getLastAcknowledgedRelayCommand } from '../dao/deviceCommandDao';
 import { buildGt06CommandPacket } from '../gps/gpsPayloadParser';
 import { getSocket } from '../gps/socketRegistry';
+import { waitForCommandReply } from '../gps/commandAckWaiter';
 import { CustomError } from '../utils';
 import { createDeviceState, createEvent, getDeviceAssetMap, getDeviceState, updateDeviceState } from '../dao';
 
@@ -130,7 +137,12 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
     throw new CustomError(503, `Device ${deviceStringId} is currently offline.`);
   }
 
-  // Write binary 0x80 packet to the TCP socket (device ACKs via 0x17)
+  const socketRemote = `${socket.remoteAddress || '?'}:${socket.remotePort || '?'}`;
+
+  // Register ACK waiter BEFORE write so a fast 0x17 on the same socket is not missed.
+  // tcpGpsListener parses the reply and resolves this waiter (ack handled here only).
+  const replyPromise = waitForCommandReply(deviceStringId, serverFlagHex, 8000);
+
   try {
     await new Promise((resolve, reject) => {
       socket.write(packetBuffer, err => (err ? reject(err) : resolve()));
@@ -138,18 +150,63 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
 
     await updateDeviceCommand(record, { status: COMMAND_STATUS.SENT, sent_at: sentAt });
 
-    // Optimistic relay update only for RELAY commands.
-    // Final confirmation still comes from device 0x17 → handleCommandResponse.
+    logger.info(
+      `GT06 command SENT on socket → device=${deviceStringId} remote=${socketRemote} ` +
+        `cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`
+    );
+
+    // Await device 0x17 reply from the same TCP socket (via commandAckWaiter)
+    const reply = await replyPromise;
+    const ackedAt = new Date();
+
+    if (!reply) {
+      logger.warn(
+        `GT06 command NO REPLY → id=${record.id} device=${deviceStringId} flag=${serverFlagHex} (still status=sent)`
+      );
+      return {
+        message: MESSAGE_CONSTANTS.SUCCESS,
+        data: {
+          id: record.id,
+          device_id: id,
+          device_string_id: deviceStringId,
+          command: resolvedCommand,
+          status: COMMAND_STATUS.SENT,
+          response: null,
+          acked_at: null,
+          replied_on_same_socket: false,
+          serial,
+          server_flag: serverFlagHex,
+          packet_hex: packetHex,
+          socket_remote: socketRemote,
+          sent_at: sentAt
+        }
+      };
+    }
+
+    const responseText = reply.content || reply.raw || '';
+    await updateDeviceCommand(record, {
+      status: COMMAND_STATUS.ACKNOWLEDGED,
+      response: responseText,
+      acked_at: ackedAt
+    });
+
+    // Apply relay + event only after real device ACK (from this send path)
     const isRelayOnCmd = resolvedCommand === RAW_COMMANDS.RELAY_ON;
     const isRelayOffCmd = resolvedCommand === RAW_COMMANDS.RELAY_OFF;
-    if (isRelayOnCmd || isRelayOffCmd) {
+    const lower = String(responseText).toLowerCase();
+    const responseSaysOn = RELAY_ON_RESPONSES.some(r => lower.includes(r));
+    const responseSaysOff = RELAY_OFF_RESPONSES.some(r => lower.includes(r));
+    const relayStatus =
+      responseSaysOn ? true : responseSaysOff ? false : isRelayOnCmd ? true : isRelayOffCmd ? false : null;
+
+    if (relayStatus !== null) {
       let deviceState = await getDeviceState({ device_id: id });
       if (!deviceState) {
         deviceState = await createDeviceState({ device_id: id });
       }
       await updateDeviceState(deviceState, {
-        relay_status: isRelayOnCmd,
-        updated_at: new Date()
+        relay_status: relayStatus,
+        updated_at: ackedAt
       });
 
       const deviceAssetMap = await getDeviceAssetMap({ device_id: id }, ['asset_id']);
@@ -159,17 +216,22 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
           user_id: device.owner_id,
           device_id: id,
           asset_id: assetId,
-          type: isRelayOnCmd ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
+          type: relayStatus ? EVENT.RELAY_ON : EVENT.RELAY_OFF,
           latitude: deviceState.latitude,
           longitude: deviceState.longitude,
-          metadata: { source: 'command_sent', command: resolvedCommand },
-          event_at: sentAt
+          metadata: {
+            source: 'command_ack',
+            command: resolvedCommand,
+            response: responseText
+          },
+          event_at: ackedAt
         });
       }
     }
 
     logger.info(
-      `GT06 command sent → device=${deviceStringId} cmd=${resolvedCommand} serial=${serial} flag=${serverFlagHex} hex=${packetHex}`
+      `GT06 command ACKED here → id=${record.id} device=${deviceStringId} ` +
+        `response="${responseText}"`
     );
 
     return {
@@ -179,10 +241,14 @@ export const sendDeviceCommand = async ({ id, command, userId }) => {
         device_id: id,
         device_string_id: deviceStringId,
         command: resolvedCommand,
-        status: COMMAND_STATUS.SENT,
+        status: COMMAND_STATUS.ACKNOWLEDGED,
+        response: responseText,
+        acked_at: ackedAt,
+        replied_on_same_socket: true,
         serial,
         server_flag: serverFlagHex,
         packet_hex: packetHex,
+        socket_remote: socketRemote,
         sent_at: sentAt
       }
     };
