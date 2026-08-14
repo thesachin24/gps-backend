@@ -112,16 +112,8 @@ export const updateAssetDetail = async (id, payload, user_id) => {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.ACCESS_DENIED);
   }
 
-  const updates = pickUpdatableFields(payload);
-  if (!Object.keys(updates).length) {
-    return {
-      message: MESSAGE_CONSTANTS.SUCCESS,
-      data: asset
-    };
-  }
-
   try {
-    const updated = await updateAsset(asset, updates);
+    const updated = await updateAsset(asset, payload);
     return {
       message: MESSAGE_CONSTANTS.ASSET_UPDATE_SUCCESS,
       data: updated

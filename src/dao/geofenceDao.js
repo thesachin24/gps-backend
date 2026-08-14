@@ -14,10 +14,12 @@ export const getGeofenceList = (filter, page, pageSize, order = []) =>
     include: [
       {
         model: AssetGeofenceMap,
-        as: 'asset_geofence',
+        as: 'asset_geofences',
         attributes: ['id', 'geofence_id', 'asset_id', 'created_at'],
+        raw: true,
       }
     ],
+    distinct: true,
     order: order.length ? [order] : [['id', 'DESC']]
   });
 

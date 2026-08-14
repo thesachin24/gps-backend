@@ -103,6 +103,6 @@ const Geofence = sequelize.define(
   },
 );
 
-Geofence.hasOne(AssetGeofenceMap, { foreignKey: 'geofence_id', as: 'asset_geofence' });
-AssetGeofenceMap.belongsTo(Geofence, { foreignKey: 'geofence_id', as: 'geofence' });
+Geofence.hasMany(AssetGeofenceMap, { foreignKey: 'geofence_id', as: 'asset_geofences' });
+AssetGeofenceMap.belongsTo(Geofence, { foreignKey: 'geofence_id', as: 'geofences' });
 export default Geofence;
