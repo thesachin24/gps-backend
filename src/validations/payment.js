@@ -7,7 +7,7 @@ import { CONSULTATION_TYPE, MINIMUM_WALLET, ORDER_TYPE, SUBSCRIPTION_PLANS } fro
 export const payment = {
   checkout: {
     body: {
-      type: Joi.string()
+      order_type: Joi.string()
         .valid(
           ORDER_TYPE.SUBSCRIPTION,
         ).required(),
