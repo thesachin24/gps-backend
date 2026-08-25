@@ -224,3 +224,9 @@ export const CHECKOUT_TITLE = {
   FEE: "Service Fee",
   VALIDITY: "Validity"
 }
+
+export const TAX = {
+  title: "GST",
+  // slab: 18
+  slab: 0
+}
