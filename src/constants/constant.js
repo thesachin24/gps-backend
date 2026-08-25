@@ -218,3 +218,9 @@ export const SPEED_TYPE = Object.freeze({
   OVERSPEED: 'OVERSPEED',
   IDLE: 'IDLE',
 });
+
+
+export const CHECKOUT_TITLE = {
+  FEE: "Service Fee",
+  VALIDITY: "Validity"
+}
