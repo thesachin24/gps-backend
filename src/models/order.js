@@ -55,11 +55,11 @@ const Order = sequelize.define(
       allowNull: true
     },
     payment_status: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING,
       allowNull: true
     },
     order_status: {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING,
       allowNull: true
     },
     rzr_order_id: {

@@ -91,7 +91,7 @@ export const _createNewOrder = async (payload, order_by) => {
   const options = {
     amount: (finalAmount * 100),
     currency: "INR",
-    receipt: data.order_id,
+    receipt: data.id,
     payment: {
       capture: "automatic",
       capture_options: {
@@ -101,7 +101,7 @@ export const _createNewOrder = async (payload, order_by) => {
       }
     },
     notes: {
-      order_id: data.order_id,
+      order_id: data.id,
       order_type, 
       plan_name,
       discount,
@@ -110,7 +110,7 @@ export const _createNewOrder = async (payload, order_by) => {
   };
   try {
     order = await createOrderRazorpay(options)
-    const orderInfo = await getOrder({ order_id: data.order_id })
+    const orderInfo = await getOrder({ id: data.id })
     updateOrder(orderInfo, { rzr_order_id: order.id })
   } catch (err) {
     logger.error(err);
