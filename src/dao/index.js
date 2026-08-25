@@ -14,3 +14,4 @@ export * from './geofenceDao';
 export * from './assetGeofenceMapDao';
 export * from './eventDao';
 export * from './couponDao';
+export * from './orderDao';
