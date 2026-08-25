@@ -25,8 +25,6 @@ export const ROLES = Object.freeze({
 
 export const ORDER_TYPE = Object.freeze({
   SUBSCRIPTION: "SUBSCRIPTION",
-  ADVERTISEMENT: "ADVERTISEMENT",
-  CONSULTATION: "CONSULTATION"
 });
 
 
@@ -56,15 +54,27 @@ export const OPTIONS = Object.freeze({
 });
 
 export const SUBSCRIPTIONS = {
-  BASIC: {
-    TITLE: "3 Months Subscription",
+  ONE_YEAR: {
+    TITLE: "1 Year Subscription",
     FEATURES: [
-      "3 Months Subscription",
-      "1000 Views",
+      "Unlimited Locations",
+      "3 Months Data Retention",
+      "Unlimited Views",
     ],
-    FEE: 2999,
-    VALIDITY: "3 Months",
-    DAYS: 90
+    FEE: 999,
+    VALIDITY: "1 Year",
+    DAYS: 365
+  },
+  TWO_YEARS: {
+    TITLE: "2 Years Subscription",
+    FEATURES: [
+      "Unlimited Locations",
+      "6 Months Data Retention",
+      "Unlimited Views",
+    ],
+    FEE: 1999,
+    VALIDITY: "2 Years",
+    DAYS: 730
   }
 }
 

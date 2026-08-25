@@ -1,0 +1,226 @@
+import { update } from 'lodash';
+import logger from '../config/logger';
+import {
+  BAD_REQUEST,
+  CONSULTATION_VALIDITY,
+  COUPON_TYPE,
+  FORBIDDEN,
+  LAWYER_FIELD,
+  MESSAGE_CONSTANTS,
+  NOT_FOUND,
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  ORDER_TYPE,
+  SERVICES,
+  SUBSCRIPTIONS,
+  TAX,
+  UN_PROCESSABLE_ENTITY,
+  WALLET_VALIDITY,
+  SERVICES_FIELD,
+} from '../constants';
+import { getLawyer, getOrder, getService, updateOrder } from '../dao';
+import { getCoupon } from '../dao/couponDao';
+import { getCheckoutObject } from '../helper';
+import {
+  calculateCredits,
+  CustomError,
+  precise,
+} from '../utils';
+import { createOrderRazorpay } from '../utils/razorPay';
+import { createOrders } from './orderService';
+
+
+const _applyCoupon = async (coupon_code, total) => {
+  const couponObj = await getCoupon({ coupon_code })
+  if (!couponObj) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.COUPON_NOT_FOUND);
+  }
+  const { coupon_value, coupon_type, min_value, usage } = couponObj
+  let discount = 0
+  if (min_value && total < min_value) {
+    throw new CustomError(BAD_REQUEST, MESSAGE_CONSTANTS.MINIMUM_VALUE + min_value);
+  }
+  // Apply Discount
+  if (coupon_type === COUPON_TYPE.PERCENTAGE) {
+    discount = (coupon_value / 100) * total;
+  } else {
+    discount = total - coupon_value;
+  }
+  return discount
+}
+
+export const _insertOrder = async (payload, order_by) => {
+  const {
+    total,
+    plan_name,
+    plan_type,
+    tax,
+    subTotal,
+    discount,
+    order_type, 
+    coupon,
+    finalAmount,
+    lawyer_id } = payload
+
+  const orderPayload = {
+    order_by,
+    order_for: lawyer_id ? lawyer_id : 0,
+    order_type: order_type,
+    plan_name: plan_name,
+    plan_type: plan_type,
+    tax,
+    tax_percentage: TAX.slab,
+    order_amount: total,
+    sub_total: subTotal,
+    discount_amount: discount,
+    coupon_code: coupon ? coupon : "",
+    final_total: finalAmount,
+    order_time: new Date(),
+    payment_status_new: PAYMENT_STATUS.INITIATED
+  }
+  return createOrders(orderPayload)
+}
+
+export const _createNewOrder = async (payload, order_by) => {
+  const { finalAmount, plan_name, plan_type, discount, initiateOrder, order_type, coupon } = payload
+  let order = {}
+  if (precise(finalAmount) !== precise(initiateOrder)) {
+    throw new CustomError(UN_PROCESSABLE_ENTITY, MESSAGE_CONSTANTS.AMOUNT_MISMATCH);
+  }
+  const { data } = await _insertOrder(payload, order_by)
+
+  const options = {
+    amount: (finalAmount * 100),
+    currency: "INR",
+    receipt: data.order_id,
+    payment: {
+      capture: "automatic",
+      capture_options: {
+        automatic_expiry_period: 12,
+        manual_expiry_period: 7200,
+        refund_speed: "optimum"
+      }
+    },
+    notes: {
+      order_id: data.order_id,
+      order_type, 
+      plan_name,
+      plan_type,
+      discount,
+      coupon
+    }
+  };
+  try {
+    order = await createOrderRazorpay(options)
+    const orderInfo = await getOrder({ order_id: data.order_id })
+    updateOrder(orderInfo, { rzr_order_id: order.id })
+  } catch (err) {
+    logger.error(err);
+    throw new CustomError(UN_PROCESSABLE_ENTITY, err.error.description);
+  }
+  return order;
+}
+
+export const getPlanDetails = (plan_name, plan_type) => {
+  const subscription = SUBSCRIPTIONS.find(sub => sub.plan_name === plan_name);
+
+  if (!subscription) {
+    return { error: 'Subscription type not found' };
+  }
+
+  const plan = subscription.plans.find(p => p.plan_type === plan_type);
+
+  if (!plan) {
+    return { error: 'Plan type not found for the given subscription' };
+  }
+
+  return {
+    price: plan.price,
+    validity: plan.durationDays
+  };
+}
+
+export const _getAmountAndValidity = async (payload) => {
+  const { order_type, plan_name, service_id, amount, plan_type } = payload
+  let total = 0
+  let validity = ""
+  if (order_type === ORDER_TYPE.SUBSCRIPTION) {
+    const planDetails = getPlanDetails(plan_name, plan_type);
+    if(planDetails.error){
+      throw new CustomError(FORBIDDEN, planDetails.error);
+    }
+    total = planDetails.price;
+    validity = planDetails.validity;
+  }
+  //  else if (order_type === ORDER_TYPE.SERVICE) {
+  //   const serviceObj = await getService({ service_id });
+  //   if( serviceObj.booking_fee){
+  //     total = serviceObj.booking_fee;
+  //   }else{
+  //     total = serviceObj.fee;
+  //   }
+  //   validity = serviceObj.validity;
+  // } else {
+  //   throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
+  // }
+  if (!total) {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
+  }
+  return { total, validity }
+}
+
+export const getCheckoutData = async (query, order_by) => {
+  const { order_type, coupon, plan_name, lawyer_id, service_id, amount, initiateOrder, plan_type } = query
+  //Get Amount
+  const { total, validity } = await Promise.resolve(
+    _getAmountAndValidity({order_type, lawyer_id, plan_name, service_id, amount, plan_type})
+  )
+
+  //Apply Coupon
+  let discount = 0
+  if (coupon) {
+    discount = await Promise.resolve(
+      _applyCoupon(coupon, total)
+    )
+  }
+
+  //Sub Total Amount
+  const subTotal = total - discount;
+
+  //Apply Taxes
+  const tax = (subTotal * TAX.slab / 100)
+
+  //Final Amount
+  const finalAmount = Math.round(tax + subTotal);
+
+  //Get Label/Placeholder
+  const { title } = await getCheckoutObject(order_type, plan_name);
+
+  const data = {
+    order_type, plan_name, plan_type, title, lawyer_id, validity,
+    coupon, 
+    total : precise(total),
+    discount: precise(discount), 
+    subTotal: precise(subTotal), 
+    tax: precise(tax), 
+    finalAmount: precise(finalAmount), 
+    initiateOrder
+  }
+
+  //Create Order
+  if (initiateOrder) {
+    data.order = await _createNewOrder(data, order_by)
+  }
+  if (order_type === ORDER_TYPE.WALLET) {
+    const lawyerObj = await getLawyer({ advocate_id: order_by });
+    const { credits, normalCredits, proCredits } = calculateCredits(lawyerObj, total)
+    data.credits = credits
+    data.normalCredits = normalCredits
+    data.proCredits = proCredits
+  }
+
+  return {
+    message: MESSAGE_CONSTANTS.SUCCESS,
+    data
+  };
+};
