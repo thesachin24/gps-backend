@@ -207,6 +207,7 @@ export const getCheckoutData = async (query, user_id) => {
     finalAmount: precise(finalAmount), 
     initiateOrder
   }
+  console.log(data)
 
   //Create Order
   if (initiateOrder) {
