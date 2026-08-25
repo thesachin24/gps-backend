@@ -53,14 +53,14 @@ export const _insertOrder = async (payload, order_by) => {
   const {
     total,
     plan_name,
-    plan_type,
     tax,
     subTotal,
     discount,
     order_type, 
     coupon,
     finalAmount,
-    lawyer_id } = payload
+    user_id,
+    device_id } = payload
 
   const orderPayload = {
     user_id: user_id,
@@ -81,7 +81,7 @@ export const _insertOrder = async (payload, order_by) => {
 }
 
 export const _createNewOrder = async (payload, order_by) => {
-  const { finalAmount, plan_name, plan_type, discount, initiateOrder, order_type, coupon } = payload
+  const { finalAmount, plan_name, discount, initiateOrder, order_type, coupon } = payload
   let order = {}
   if (precise(finalAmount) !== precise(initiateOrder)) {
     throw new CustomError(UN_PROCESSABLE_ENTITY, MESSAGE_CONSTANTS.AMOUNT_MISMATCH);
@@ -104,7 +104,6 @@ export const _createNewOrder = async (payload, order_by) => {
       order_id: data.order_id,
       order_type, 
       plan_name,
-      plan_type,
       discount,
       coupon
     }
@@ -120,31 +119,31 @@ export const _createNewOrder = async (payload, order_by) => {
   return order;
 }
 
-export const getPlanDetails = (plan_name, plan_type) => {
-  const subscription = SUBSCRIPTIONS.find(sub => sub.plan_name === plan_name);
+export const getPlanDetails = (plan_name) => {
+  const subscription = SUBSCRIPTIONS[`${plan_name}`];
 
   if (!subscription) {
     return { error: 'Subscription type not found' };
   }
 
-  const plan = subscription.plans.find(p => p.plan_type === plan_type);
+  // const plan = subscription.plans.find(p => p.plan_type === plan_type);
 
-  if (!plan) {
-    return { error: 'Plan type not found for the given subscription' };
-  }
+  // if (!plan) {
+  //   return { error: 'Plan type not found for the given subscription' };
+  // }
 
   return {
-    price: plan.price,
-    validity: plan.durationDays
+    price: subscription.FEE,
+    validity: subscription.VALIDITY
   };
 }
 
 export const _getAmountAndValidity = async (payload) => {
-  const { order_type, plan_name, service_id, amount, plan_type } = payload
+  const { order_type, plan_name, amount } = payload
   let total = 0
   let validity = ""
   if (order_type === ORDER_TYPE.SUBSCRIPTION) {
-    const planDetails = getPlanDetails(plan_name, plan_type);
+    const planDetails = getPlanDetails(plan_name);
     if(planDetails.error){
       throw new CustomError(FORBIDDEN, planDetails.error);
     }
@@ -196,7 +195,7 @@ export const getCheckoutData = async (query, user_id) => {
   const { title } = await getCheckoutObject(order_type, plan_name);
 
   const data = {
-    order_type, plan_name, plan_type, title, lawyer_id, validity,
+    order_type, plan_name, title, user_id, validity,
     coupon, 
     total : precise(total),
     discount: precise(discount), 
@@ -208,15 +207,15 @@ export const getCheckoutData = async (query, user_id) => {
 
   //Create Order
   if (initiateOrder) {
-    data.order = await _createNewOrder(data, order_by)
+    data.order = await _createNewOrder(data, user_id)
   }
-  if (order_type === ORDER_TYPE.WALLET) {
-    const lawyerObj = await getLawyer({ advocate_id: order_by });
-    const { credits, normalCredits, proCredits } = calculateCredits(lawyerObj, total)
-    data.credits = credits
-    data.normalCredits = normalCredits
-    data.proCredits = proCredits
-  }
+  // if (order_type === ORDER_TYPE.WALLET) {
+  //   const lawyerObj = await getLawyer({ advocate_id: order_by });
+  //   const { credits, normalCredits, proCredits } = calculateCredits(lawyerObj, total)
+  //   data.credits = credits
+  //   data.normalCredits = normalCredits
+  //   data.proCredits = proCredits
+  // }
 
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
