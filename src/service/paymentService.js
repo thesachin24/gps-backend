@@ -177,6 +177,8 @@ export const getCheckoutData = async (query, user_id) => {
     _getAmountAndValidity({order_type, user_id, plan_name, amount})
   )
 
+  console.log(total, validity)
+
   //Apply Coupon
   let discount = 0
   if (coupon) {
