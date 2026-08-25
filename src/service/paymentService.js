@@ -145,6 +145,7 @@ export const _getAmountAndValidity = async (payload) => {
   console.log(order_type, plan_name, amount)
   if (order_type === ORDER_TYPE.SUBSCRIPTION) {
     const planDetails = getPlanDetails(plan_name);
+    console.log(planDetails)
     if(planDetails.error){
       throw new CustomError(FORBIDDEN, planDetails.error);
     }
