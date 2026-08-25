@@ -63,11 +63,10 @@ export const _insertOrder = async (payload, order_by) => {
     lawyer_id } = payload
 
   const orderPayload = {
-    order_by,
-    order_for: lawyer_id ? lawyer_id : 0,
+    user_id: user_id,
+    device_id: device_id,
     order_type: order_type,
     plan_name: plan_name,
-    plan_type: plan_type,
     tax,
     tax_percentage: TAX.slab,
     order_amount: total,
@@ -76,7 +75,7 @@ export const _insertOrder = async (payload, order_by) => {
     coupon_code: coupon ? coupon : "",
     final_total: finalAmount,
     order_time: new Date(),
-    payment_status_new: PAYMENT_STATUS.INITIATED
+    payment_status: PAYMENT_STATUS.INITIATED
   }
   return createOrders(orderPayload)
 }
@@ -169,11 +168,11 @@ export const _getAmountAndValidity = async (payload) => {
   return { total, validity }
 }
 
-export const getCheckoutData = async (query, order_by) => {
-  const { order_type, coupon, plan_name, lawyer_id, service_id, amount, initiateOrder, plan_type } = query
+export const getCheckoutData = async (query, user_id) => {
+  const { order_type, coupon, plan_name, amount, initiateOrder } = query
   //Get Amount
   const { total, validity } = await Promise.resolve(
-    _getAmountAndValidity({order_type, lawyer_id, plan_name, service_id, amount, plan_type})
+    _getAmountAndValidity({order_type, user_id, plan_name, amount})
   )
 
   //Apply Coupon

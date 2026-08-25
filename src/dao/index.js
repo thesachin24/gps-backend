@@ -13,3 +13,4 @@ export * from './deviceCommandDao';
 export * from './geofenceDao';
 export * from './assetGeofenceMapDao';
 export * from './eventDao';
+export * from './couponDao';

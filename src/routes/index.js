@@ -13,6 +13,7 @@ import commonRoutes from './commonRoutes';
 import profileRoutes from './profileRoutes';
 import geofenceRoutes from './geofenceRoutes';
 import eventRoutes from './eventRoutes';
+import paymentRoutes from './paymentRoutes';
 
 router.use('/api-docs', swagger.serve, swagger.setup(swaggerConfig));
 
@@ -31,5 +32,8 @@ router.use('/profile', profileRoutes);
 router.use('/geofences', geofenceRoutes);
 
 router.use('/events', eventRoutes);
+
+router.use('/payments', paymentRoutes);
+
 
 export default router;

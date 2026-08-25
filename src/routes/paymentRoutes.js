@@ -18,11 +18,11 @@ import { checkoutPayment } from '../controller';
  *     - Payment
  *     parameters:
  *       - name: type
- *         description: Type (SUBSCRIPTION, ADVERTISEMENT).
+ *         description: Type (SUBSCRIPTION).
  *         in: query
  *         required: true
  *         type: string
- *       - name: service
+ *       - name: plan_name
  *         description: Type (BASIC).
  *         in: query
  *         required: true

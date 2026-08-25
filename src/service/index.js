@@ -10,3 +10,4 @@ export * from './optionService';
 export * from './geofenceService';
 export * from './eventService';
 export * from './paymentService';
+export * from './orderService';

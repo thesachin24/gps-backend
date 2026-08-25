@@ -150,11 +150,12 @@ export const DEVICE_FIELD = [
 
 
 export const ORDER_DETAIL_FIELD = [
-  "order_id",
-  "order_for",
+  "id",
+  "user_id",
+  "device_id",
   "order_type",
   "order_amount",
-  "business_category_id",
+  "plan_name",
   "sub_total",
   "tax",
   "tax_percentage",
@@ -163,9 +164,8 @@ export const ORDER_DETAIL_FIELD = [
   "final_total",
   "plan_name",
   "createdAt",
-  "order_status_new",
-  "payment_status_new",
-  "advocate_commission",
+  "order_status",
+  "payment_status"
 ];
 
 
