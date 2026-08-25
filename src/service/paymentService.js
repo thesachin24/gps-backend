@@ -196,9 +196,10 @@ export const getCheckoutData = async (query, user_id) => {
   //Final Amount
   const finalAmount = Math.round(tax + subTotal);
 
+  console.log(order_type, plan_name, user_id, finalAmount)
   //Get Label/Placeholder
   const { title } = await getCheckoutObject(order_type, plan_name);
-
+console.log(title)
   const data = {
     order_type, plan_name, title, user_id, validity,
     coupon, 
