@@ -142,6 +142,7 @@ export const _getAmountAndValidity = async (payload) => {
   const { order_type, plan_name, amount } = payload
   let total = 0
   let validity = ""
+  console.log(order_type, plan_name, amount)
   if (order_type === ORDER_TYPE.SUBSCRIPTION) {
     const planDetails = getPlanDetails(plan_name);
     if(planDetails.error){
@@ -158,9 +159,10 @@ export const _getAmountAndValidity = async (payload) => {
   //     total = serviceObj.fee;
   //   }
   //   validity = serviceObj.validity;
-  // } else {
-  //   throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
-  // }
+  // } 
+  else {
+    throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
+  }
   if (!total) {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
   }
