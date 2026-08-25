@@ -1,8 +1,8 @@
 import { ORDERS_FIELD, OFFSET, PAGE_LIMIT, USER__BASIC } from '../constants';
 import orderModel from '../models/order';
 import userModel from '../models/user';
-import lawyerModel from '../models/lawyer';
-import invoiceModel from '../models/invoice';
+// import lawyerModel from '../models/lawyer';
+// import invoiceModel from '../models/invoice';
 import sequelize from '../models/index';
 
 export const getAllOrdersList = (filters, attributes) =>
@@ -39,22 +39,23 @@ export const getOrderById = (filters, attributes) =>
   orderModel.findOne({
     attributes: attributes || ORDERS_FIELD,
     where: filters,
-    include: [{
-      attributes: ["registration_id", "name", "city", "mobile", "profile_image"],
-      model: userModel,
-      as: 'lawyer',
-      required: false,
-      include: {
-        attributes: ['avg_ratings', 'is_verified', 'total_ratings'],
-        model: lawyerModel,
-        required: true,
-        unique: false
-      }
-    },
-    {
-      attributes: ['path'],
-      model: invoiceModel
-    }]
+  //   include: [{
+  //     attributes: ["registration_id", "name", "city", "mobile", "profile_image"],
+  //     model: userModel,
+  //     as: 'lawyer',
+  //     required: false,
+  //     include: {
+  //       attributes: ['avg_ratings', 'is_verified', 'total_ratings'],
+  //       model: userModel,
+  //       required: true,
+  //       unique: false
+  //     }
+  //   },
+  //   // {
+  //   //   attributes: ['path'],
+  //   //   model: invoiceModel
+  //   // }
+  // ]
 
   });
 
@@ -80,10 +81,12 @@ orderModel.findOne({
     model: userModel,
     as: 'user',
     required: false
-  },{
-    attributes: ['path'],
-    model: invoiceModel
-  }]
+  }
+  // ,{
+  //   attributes: ['path'],
+  //   model: invoiceModel
+  // }
+]
 
 });
 

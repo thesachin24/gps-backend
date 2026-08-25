@@ -1,6 +1,6 @@
 import Sequelize from 'sequelize';
 import sequelize from './index';
-import Invoice from './invoice';
+// import Invoice from './invoice';
 
 const Order = sequelize.define(
   'orders',
@@ -87,9 +87,9 @@ const Order = sequelize.define(
 
 
 //Invoice Relation
-Order.hasOne(Invoice, {
-  foreignKey: 'order_id',
-  foreignKeyConstraint: false
-});
+// Order.hasOne(Invoice, {
+//   foreignKey: 'order_id',
+//   foreignKeyConstraint: false
+// });
 //Invoice Relation
 export default Order;
