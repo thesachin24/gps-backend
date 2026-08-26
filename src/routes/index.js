@@ -14,6 +14,7 @@ import profileRoutes from './profileRoutes';
 import geofenceRoutes from './geofenceRoutes';
 import eventRoutes from './eventRoutes';
 import paymentRoutes from './paymentRoutes';
+import webhookRoutes from './webhookRoutes';
 
 router.use('/api-docs', swagger.serve, swagger.setup(swaggerConfig));
 
@@ -35,5 +36,6 @@ router.use('/events', eventRoutes);
 
 router.use('/payments', paymentRoutes);
 
+router.use('/webhooks', webhookRoutes);
 
 export default router;

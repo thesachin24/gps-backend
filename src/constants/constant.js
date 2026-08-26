@@ -230,3 +230,17 @@ export const TAX = {
   // slab: 18
   slab: 0
 }
+
+export const INVENTORY_STATUS = Object.freeze({
+  IN_STOCK: 'IN_STOCK',
+  ASSIGNED: 'ASSIGNED',
+  SOLD: 'SOLD',
+  ACTIVATED: 'ACTIVATED'
+});
+
+export const HOLDER_TYPE = Object.freeze({
+  ADMIN: 'ADMIN',
+  DISTRIBUTOR: 'DISTRIBUTOR',
+  DEALER: 'DEALER',
+  CUSTOMER: 'CUSTOMER'
+});

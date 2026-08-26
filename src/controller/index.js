@@ -8,3 +8,4 @@ export * from './commonController';
 export * from './eventController';
 export * from './deviceCommandController';
 export * from './paymentController';
+export * from './webhookController';

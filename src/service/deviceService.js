@@ -7,7 +7,8 @@ import {
   CONFLICT,
   UN_PROCESSABLE_ENTITY,
   OFFSET,
-  PAGE_LIMIT
+  PAGE_LIMIT,
+  INVENTORY_STATUS
 } from '../constants';
 import {
   getDeviceList,
@@ -20,7 +21,7 @@ import {
   getDeviceSummary
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
-import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getTelemetryList } from '../dao';
+import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getInventory, getTelemetryList, updateInventory } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -91,12 +92,18 @@ export const getDeviceDetail = async (id, owner_id) => {
 };
 
 export const createDevices = async (payload, owner_id, owner_type) => {
-  const deviceId = String(payload.device_id || '').trim();
-  if (!deviceId) {
+  const qr_uuid = String(payload.qr_uuid || '').trim();
+  if (!qr_uuid) {
     throw new CustomError(UN_PROCESSABLE_ENTITY, 'device_id is required.');
   }
 
-  const existing = await getDeviceByDeviceIdIgnoreCase(deviceId);
+  const inventory = await getInventory({ qr_uuid });
+  if (!inventory) {
+    throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
+  }
+
+  const { device_id, device_type, sim_number, name  } = inventory;
+  const existing = await getDeviceByDeviceIdIgnoreCase(device_id);
   if (existing) {
     throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
   }
@@ -104,14 +111,11 @@ export const createDevices = async (payload, owner_id, owner_type) => {
   const row = {
     owner_id,
     owner_type,
-    device_id: deviceId,
+    device_id,
     device_name: payload.device_name != null ? payload.device_name : null,
-    device_type: payload.device_type || 'GPS_TRACKER',
-    firmware_version: payload.firmware_version != null ? payload.firmware_version : null,
-    sim_number: payload.sim_number != null ? payload.sim_number : null,
-    name: payload.name != null ? payload.name : null,
-    metadata: payload.metadata != null ? payload.metadata : null,
-    is_active: payload.is_active !== undefined ? !!payload.is_active : true
+    device_type: device_type || 'GPS_TRACKER',
+    sim_number,
+    is_active: true
   };
 
   try {
@@ -119,6 +123,8 @@ export const createDevices = async (payload, owner_id, owner_type) => {
     //Create device state
     await createDeviceState({ device_id: created.id });
 
+    //Update inventory status to IN_USE
+    await updateInventory(inventory, { status: INVENTORY_STATUS.ACTIVATED });
     return {
       message: MESSAGE_CONSTANTS.DEVICE_CREATE_SUCCESS,
       data: created

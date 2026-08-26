@@ -14,14 +14,15 @@ export const device = {
   },
   createDevice: {
     body: {
-      device_id: Joi.string().trim().required(),
-      device_name: Joi.string().trim().optional().allow('', null),
-      device_type: Joi.string().trim().optional(),
-      firmware_version: Joi.string().trim().optional().allow('', null),
-      sim_number: Joi.string().trim().optional().allow('', null),
-      owner_id: Joi.number().integer().positive().optional().allow(null),
-      owner_type: Joi.string().valid('USER', 'DISTRIBUTOR', 'ADMIN').optional().allow(null),
-      is_active: Joi.boolean().optional()
+      // device_id: Joi.string().trim().required(),
+      // device_name: Joi.string().trim().optional().allow('', null),
+      // device_type: Joi.string().trim().optional(),
+      // firmware_version: Joi.string().trim().optional().allow('', null),
+      // sim_number: Joi.string().trim().optional().allow('', null),
+      // owner_id: Joi.number().integer().positive().optional().allow(null),
+      // owner_type: Joi.string().valid('USER', 'DISTRIBUTOR', 'ADMIN').optional().allow(null),
+      // is_active: Joi.boolean().optional()
+      qr_uuid: Joi.string().uuid().trim().required()
     }
   },
   updateDevice: {

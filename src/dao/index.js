@@ -15,3 +15,4 @@ export * from './assetGeofenceMapDao';
 export * from './eventDao';
 export * from './couponDao';
 export * from './orderDao';
+export * from './inventoryDao';

@@ -3,8 +3,7 @@ import {
   SERVER_ERROR
 } from '../constants';
 import logger from '../config/logger';
-import {
-} from '../service';
+import { webhookRazorpayData } from '../service';
 
 export const webhookRazorpay = async (req, res) => {
   const {
