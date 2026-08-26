@@ -1,5 +1,5 @@
 import { Sequelize } from 'sequelize';
-import { DEVICE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
+import { DEVICE_FIELD, OFFSET, ORDER_TYPE, PAGE_LIMIT, PAYMENT_STATUS } from '../constants';
 import deviceModel from '../models/device';
 import sequelize from '../models/index';
 import Telemetry from '../models/telemetry';
@@ -30,6 +30,22 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
             attributes: ['id', 'user_id', 'name', 'type', 'speed_limit', 'registration_number', 'make', 'model', 'color', 'metadata']
           }
         ]
+      },
+      {
+        model: Order,
+        as: 'subscription',
+        attributes: ['id', 'plan_name', 'active_from', 'active_to'],
+        where: {
+          payment_status: PAYMENT_STATUS.PAID,
+          order_type: ORDER_TYPE.SUBSCRIPTION,
+          active_from: {
+            [Sequelize.Op.lte]: new Date()
+          },
+          active_to: {
+            [Sequelize.Op.gte]: new Date()
+          }
+        },
+        required: false
       }
     ],
     order: order.length ? [order] : [['id', 'DESC']]
@@ -62,6 +78,22 @@ export const getDeviceById = filters =>
             attributes: ['id', 'user_id', 'name', 'type', 'speed_limit', 'registration_number', 'make', 'model', 'color', 'metadata']
           }
         ]
+      },
+      {
+        model: Order,
+        as: 'subscription',
+        attributes: ['id', 'plan_name', 'active_from', 'active_to'],
+        where: {
+          payment_status: PAYMENT_STATUS.PAID,
+          order_type: ORDER_TYPE.SUBSCRIPTION,
+          active_from: {
+            [Sequelize.Op.lte]: new Date()
+          },
+          active_to: {
+            [Sequelize.Op.gte]: new Date()
+          }
+        },
+        required: false
       }
     ],
   });
@@ -102,6 +134,8 @@ export const getDeviceTripsByDeviceAndDateRange = (deviceId, from, to) => {
 
 import { getDistance } from 'geolib';
 import { formatSecondsToHoursAndMinutes } from './commonDao';
+import Order from '../models/order';
+import User from '../models/user';
 
 export const calculateSummary = (records) => {
   if (records.length < 2) {
@@ -178,3 +212,30 @@ export const getDeviceSummary = async ({ id, from, to, owner_id }) => {
   console.log(summary);
   return summary;
 };
+
+
+export const getDeviceSubscription = (filters, attributes) =>
+  deviceModel.findOne(
+    {
+      attributes: attributes || DEVICE_FIELD,
+      where: filters,
+      include: [{
+        attributes: ["plan_name", "active_from", "active_to"],
+        model: Order,
+        as: 'subscription',
+        where: {
+          payment_status: ["PAID"],
+          order_type: ORDER_TYPE.SUBSCRIPTION,
+          active_from: {
+            [Sequelize.Op.lte]: new Date()
+          },
+          active_to: {
+            [Sequelize.Op.gte]: new Date()
+          }
+        },
+        required: false
+      }],
+      order: [
+        [{ model: Order, as: 'subscription' }, 'id', 'DESC']
+      ],
+    });

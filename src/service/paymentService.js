@@ -134,7 +134,8 @@ export const getPlanDetails = (plan_name) => {
 
   return {
     price: subscription.FEE,
-    validity: subscription.VALIDITY
+    validity: subscription.VALIDITY,
+    days: subscription.DAYS
   };
 }
 
@@ -142,6 +143,7 @@ export const _getAmountAndValidity = async (payload) => {
   const { order_type, plan_name, amount } = payload
   let total = 0
   let validity = ""
+  let days = 0
   console.log(order_type, plan_name, amount)
   if (order_type === ORDER_TYPE.SUBSCRIPTION) {
     const planDetails = getPlanDetails(plan_name);
@@ -151,6 +153,7 @@ export const _getAmountAndValidity = async (payload) => {
     }
     total = planDetails.price;
     validity = planDetails.validity;
+    days = planDetails.days;
   }
   //  else if (order_type === ORDER_TYPE.SERVICE) {
   //   const serviceObj = await getService({ service_id });
@@ -167,17 +170,17 @@ export const _getAmountAndValidity = async (payload) => {
   if (!total) {
     throw new CustomError(FORBIDDEN, MESSAGE_CONSTANTS.SOMETHING_WENT_WRONG)
   }
-  return { total, validity }
+  return { total, validity, days }
 }
 
 export const getCheckoutData = async (query, user_id) => {
   const { order_type, coupon, plan_name, amount, initiateOrder } = query
   //Get Amount
-  const { total, validity } = await Promise.resolve(
+  const { total, validity, days } = await Promise.resolve(
     _getAmountAndValidity({order_type, user_id, plan_name, amount})
   )
 
-  console.log(total, validity)
+  console.log(total, validity, days)
 
   //Apply Coupon
   let discount = 0

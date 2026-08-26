@@ -2,6 +2,7 @@ import Sequelize from "sequelize";
 import sequelize from "./index";
 import DeviceAssetMap from "./deviceAssetMap";
 import DeviceState from "./deviceState";
+import Order from "./order";
 
 const Device = sequelize.define(
   "devices",
@@ -74,5 +75,8 @@ DeviceAssetMap.belongsTo(Device, { foreignKey: 'device_id', as: 'device_asset' }
 
 Device.hasOne(DeviceState, { foreignKey: 'device_id', as: 'device_state' });
 DeviceState.belongsTo(Device, { foreignKey: 'device_id', as: 'device_state' });
+
+Device.hasOne(Order, { foreignKey: 'device_id', as: 'subscription' });
+Order.belongsTo(Device, { foreignKey: 'device_id', as: 'subscription' });
 
 export default Device;
