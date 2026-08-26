@@ -30,7 +30,7 @@ export const _performOrderAction = async (orderInfo) => {
     const planDetails = getPlanDetails(orderInfo.plan_name);
     const days = planDetails.days;
     console.log("days", days, device_id)
-    const dataOj = await getDeviceSubscription({ device_id });
+    const dataOj = await getDeviceSubscription({ id: device_id });
 
     // if(!dataOj){
     // }
