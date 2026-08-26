@@ -13,6 +13,7 @@ export const payment = {
         ).required(),
       coupon: Joi.string().allow(null, '').optional(),
       plan_name: Joi.string().required(),
+      device_id: Joi.number().required(),
       amount: Joi.number().optional(),
       initiateOrder: Joi.number().optional()
     }

@@ -81,7 +81,7 @@ export const _insertOrder = async (payload, order_by) => {
 }
 
 export const _createNewOrder = async (payload, order_by) => {
-  const { finalAmount, plan_name, discount, initiateOrder, order_type, coupon } = payload
+  const { finalAmount, plan_name, discount, initiateOrder, order_type, coupon, device_id } = payload
   let order = {}
   if (precise(finalAmount) !== precise(initiateOrder)) {
     throw new CustomError(UN_PROCESSABLE_ENTITY, MESSAGE_CONSTANTS.AMOUNT_MISMATCH);
@@ -174,7 +174,7 @@ export const _getAmountAndValidity = async (payload) => {
 }
 
 export const getCheckoutData = async (query, user_id) => {
-  const { order_type, coupon, plan_name, amount, initiateOrder } = query
+  const { order_type, coupon, plan_name, amount, device_id, initiateOrder } = query
   //Get Amount
   const { total, validity, days } = await Promise.resolve(
     _getAmountAndValidity({order_type, user_id, plan_name, amount})
@@ -206,6 +206,7 @@ console.log(title)
   const data = {
     order_type, plan_name, title, user_id, validity,
     coupon, 
+    device_id,
     total : precise(total),
     discount: precise(discount), 
     subTotal: precise(subTotal), 
