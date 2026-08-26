@@ -102,6 +102,11 @@ const User = sequelize.define(
       type: Sequelize.DATE,
       allowNull: true
     },
+    onboarded:{
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    }
   },
   {
     tableName: "users",

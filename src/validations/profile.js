@@ -30,6 +30,7 @@ export const profile = {
       profile_image: Joi.string().optional(),
       cover_image :Joi.array().optional(),
       kyc_status: Joi.string().valid(KYC_STATUS.SUBMITTED).optional().allow('', null),
+      onboarded: Joi.boolean().optional().allow('', null),
     },
   },
   updateImage: {
