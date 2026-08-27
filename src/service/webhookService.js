@@ -114,7 +114,7 @@ export const _proceed = async (event, payment, order) => {
 
   //Getting Order Data
   const orderInfo = await getOrder({ rzr_order_id: order_id });
-  
+
   if(!orderInfo){
     throw new CustomError(BAD_REQUEST, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
@@ -122,7 +122,7 @@ export const _proceed = async (event, payment, order) => {
   //If already Paid - Order
   if (event === "order.paid") {
     if(orderInfo.payment_status == PAYMENT_STATUS.PAID){
-      throw new CustomError(CREATED, MESSAGE_CONSTANTS.ALREADY_PAID);
+      // throw new CustomError(CREATED, MESSAGE_CONSTANTS.ALREADY_PAID);
     }
   }
 
@@ -132,12 +132,15 @@ export const _proceed = async (event, payment, order) => {
 
   //Perform Add Credit | Add Subscription - For New Order
   if (event === "order.paid") {
+     //Activate SIM
+     const result = await activateSim({
+      // mobileNo: req.body.mobileNo,
+      sim_number: orderInfo.subscription.sim_number,
+      planCode: orderInfo.plan_name
+    });
+    //Perform Order Action
+    
     await _performOrderAction(orderInfo);
-    //Activate SIM
-    // const result = await activateSim({
-    //   mobileNo: req.body.mobileNo,
-    //   planCode: req.body.planCode,
-    // });
     // console.log(result);
     //Deactivate SIM
   }

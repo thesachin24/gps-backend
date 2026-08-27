@@ -4,6 +4,7 @@ import userModel from '../models/user';
 // import lawyerModel from '../models/lawyer';
 // import invoiceModel from '../models/invoice';
 import sequelize from '../models/index';
+import Device from '../models/device';
 
 export const getAllOrdersList = (filters, attributes) =>
   orderModel.findAll({
@@ -31,7 +32,12 @@ export const getOrderList = (filter, page, pageSize, order, attributes) => {
 export const getOrder = (filters, attributes) =>
   orderModel.findOne({
     attributes: attributes || ORDERS_FIELD,
-    where: filters
+    where: filters,
+    include: {
+      model: Device,
+      as: 'subscription',
+      attributes: ['sim_number'],
+    }
   });
 
 

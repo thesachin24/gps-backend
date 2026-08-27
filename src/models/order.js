@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 import sequelize from './index';
+import Device from './device';
 // import Invoice from './invoice';
 
 const Order = sequelize.define(
@@ -94,4 +95,8 @@ const Order = sequelize.define(
 //   foreignKeyConstraint: false
 // });
 //Invoice Relation
+
+// Order.belongsTo(Device, { foreignKey: 'device_id', as: 'device' });
+// Device.hasOne(Order, { foreignKey: 'device_id', as: 'order' });
+
 export default Order;

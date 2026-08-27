@@ -1,14 +1,13 @@
 import axios from "axios";
+import { CustomError } from "./customError";
+import { SERVER_ERROR } from "../constants";
 
 /**
  * Airtel M2M Configuration
  */
-const AIRTEL_BASE_URL =
-  process.env.AIRTEL_BASE_URL || "https://m2m.airteliot.co.in/iot/api";
+const AIRTEL_BASE_URL = process.env.AIRTEL_BASE_URL || "https://m2m.airteliot.co.in/iot/api";
 
-const AIRTEL_AUTH_URL =
-  process.env.AIRTEL_AUTH_URL ||
-  "https://m2m.airteliot.co.in/iot/api/auth/v2/generate/authtoken";
+const AIRTEL_AUTH_URL = `${process.env.AIRTEL_BASE_URL}/developer/auth/v2/generate/authtoken`;
 
 const AIRTEL_APIKEY = process.env.AIRTEL_APIKEY;
 
@@ -148,10 +147,10 @@ const getAirtelHeaders = (token) => ({
  */
 export const activateSim = async (params) => {
   try {
-    const { mobileNo = "", planCode = "" } = params || {};
+    const { sim_number = "", planCode = "" } = params || {};
 
-    if (!mobileNo) {
-      throw new Error("mobileNo is required");
+    if (!sim_number) {
+      throw new Error("sim_number is required");
     }
 
     if (!planCode) {
@@ -163,8 +162,7 @@ export const activateSim = async (params) => {
     const payload = {
       simDOList: [
         {
-          mobileNO: String(mobileNo),
-
+          iccid: String(sim_number),
           planDO: {
             planCode: String(planCode),
           },
@@ -176,14 +174,14 @@ export const activateSim = async (params) => {
 
     console.log("AIRTEL SIM ACTIVATION");
 
-    console.log("MOBILE NO:", mobileNo);
+    console.log("SIM Number:", sim_number);
 
     console.log("PLAN CODE:", planCode);
 
     console.log("=================================");
 
     const response = await axios.post(
-      `${AIRTEL_BASE_URL}/job/sim/activate`,
+      `${AIRTEL_BASE_URL}/om/job/sim/activate`,
 
       payload,
 
@@ -228,15 +226,17 @@ export const activateSim = async (params) => {
 
     console.log("=================================");
 
-    return {
-      success: false,
+    throw new CustomError(SERVER_ERROR, error?.response?.data?.trace || error?.message);
+    // return {
+    //   success: false,
 
-      action: "ACTIVATE",
+    //   action: "ACTIVATE",
 
-      error: error?.response?.data || error?.message,
+    //   error: error?.response?.data || error?.message,
 
-      status: error?.response?.status,
-    };
+    //   status: error?.response?.status,
+    // };
+    
   }
 };
 

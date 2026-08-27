@@ -48,6 +48,7 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
         required: false
       }
     ],
+    distinct: true,
     order: order.length ? [order] : [['id', 'DESC']]
   });
 
