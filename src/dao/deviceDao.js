@@ -34,6 +34,9 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
       {
         model: Order,
         as: 'subscription',
+        separate: true,
+        limit: 1,
+        order: [['id', 'DESC']],
         attributes: ['id', 'plan_name', 'active_from', 'active_to'],
         where: {
           payment_status: PAYMENT_STATUS.PAID,
@@ -45,13 +48,9 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
             [Sequelize.Op.gte]: new Date()
           }
         },
-        distinct: true,
-        order: [['id', 'DESC']],
-        limit: 1,
         required: false
       }
     ],
-    distinct: true,
     order: order.length ? [order] : [['id', 'DESC']]
   });
 
