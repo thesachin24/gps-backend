@@ -45,6 +45,7 @@ export const getDeviceList = (filter, page, pageSize, order = []) =>
             [Sequelize.Op.gte]: new Date()
           }
         },
+        distinct: true,
         required: false
       }
     ],

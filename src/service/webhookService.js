@@ -122,7 +122,7 @@ export const _proceed = async (event, payment, order) => {
   //If already Paid - Order
   if (event === "order.paid") {
     if(orderInfo.payment_status == PAYMENT_STATUS.PAID){
-      // throw new CustomError(CREATED, MESSAGE_CONSTANTS.ALREADY_PAID);
+      throw new CustomError(CREATED, MESSAGE_CONSTANTS.ALREADY_PAID);
     }
   }
 
@@ -139,7 +139,7 @@ export const _proceed = async (event, payment, order) => {
       planCode: orderInfo.plan_name
     });
     //Perform Order Action
-    
+
     await _performOrderAction(orderInfo);
     // console.log(result);
     //Deactivate SIM
