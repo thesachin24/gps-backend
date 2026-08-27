@@ -19,7 +19,7 @@ import {
 } from '../constants';
 import { createOrder, createTransaction, createUser, createWallet, getDeviceSubscription, getLawyer, getLawyerSubscription, getOrder, getPayout, getTransaction, getUserWithIgnoreCase, updateLawyer, updateMultiOrder, updateOrder, updatePayout } from '../dao';
 import sequelize from '../models';
-import { calculateCredits, CustomError, get10DigitMobile, getTax, getTaxIncluding, precise, _notify } from '../utils';
+import { calculateCredits, CustomError, get10DigitMobile, getTax, getTaxIncluding, precise, _notify, activateSim } from '../utils';
 // import { createOrderInvoice } from '../utils/invoice';
 import { getPlanDetails } from './paymentService';
 
@@ -133,6 +133,13 @@ export const _proceed = async (event, payment, order) => {
   //Perform Add Credit | Add Subscription - For New Order
   if (event === "order.paid") {
     await _performOrderAction(orderInfo);
+    //Activate SIM
+    // const result = await activateSim({
+    //   mobileNo: req.body.mobileNo,
+    //   planCode: req.body.planCode,
+    // });
+    // console.log(result);
+    //Deactivate SIM
   }
 
   //Update Order Status
