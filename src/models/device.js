@@ -76,7 +76,7 @@ DeviceAssetMap.belongsTo(Device, { foreignKey: 'device_id', as: 'device_asset' }
 Device.hasOne(DeviceState, { foreignKey: 'device_id', as: 'device_state' });
 DeviceState.belongsTo(Device, { foreignKey: 'device_id', as: 'device_state' });
 
-Device.hasOne(Order, { foreignKey: 'device_id', as: 'subscription' });
+Device.hasMany(Order, { foreignKey: 'device_id', as: 'subscription' });
 Order.belongsTo(Device, { foreignKey: 'device_id', as: 'subscription' });
 
 export default Device;
