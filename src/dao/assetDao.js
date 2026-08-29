@@ -1,5 +1,7 @@
-import { ASSET_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
+import { ASSET_FIELD, DEVICE_FIELD, OFFSET, PAGE_LIMIT } from '../constants';
 import assetModel from '../models/asset';
+import Device from '../models/device';
+import DeviceAssetMap from '../models/deviceAssetMap';
 
 export const getAssetList = (filter, page, pageSize, order = []) =>
   assetModel.findAndCountAll({
@@ -7,7 +9,21 @@ export const getAssetList = (filter, page, pageSize, order = []) =>
     offset: page * pageSize || OFFSET,
     limit: pageSize || PAGE_LIMIT,
     where: filter,
-    order: order.length ? [order] : [['id', 'DESC']]
+    order: order.length ? [order] : [['id', 'DESC']],
+    include: [
+      { 
+        model: DeviceAssetMap,
+        as: 'device_asset_map',
+        include: [
+          { 
+            model: Device,
+            as: 'device_asset',
+            attributes: DEVICE_FIELD
+          }
+        ],
+        attributes: ["id"]
+      }
+    ]
   });
 
 export const getAsset = (filters, attributes) =>
