@@ -495,3 +495,55 @@ export const getPlans = async () => {
     };
   }
 };
+
+export const getAllAirtelSimList = async () => {
+  try {
+    const token = await getAirtelToken();
+
+    const allSims = [];
+    const pageSize = 100;
+    let pageNo = 1;
+
+    while (true) {
+      const response = await axios.get(
+        `${AIRTEL_BASE_URL}/customer/details/basket/0/sims`,
+        {
+          headers: getAirtelHeaders(token),
+          params: {
+            pageNo,
+            pageSize,
+          },
+          timeout: 30000,
+        }
+      );
+
+      const sims = response?.data?.data?.sims || [];
+
+      allSims.push(...sims);
+
+      console.log(
+        `Airtel SIM inventory: page=${pageNo}, fetched=${sims.length}, total=${allSims.length}`
+      );
+
+      // Last page
+      if (sims.length < pageSize) {
+        break;
+      }
+
+      pageNo++;
+    }
+
+    return allSims;
+  } catch (error) {
+    console.log(
+      "AIRTEL SIM INVENTORY ERROR:",
+      error?.response?.data || error?.message
+    );
+
+    return {
+      success: false,
+      error: error?.response?.data || error?.message,
+      status: error?.response?.status,
+    };
+  }
+};

@@ -238,6 +238,12 @@ export const INVENTORY_STATUS = Object.freeze({
   ACTIVATED: 'ACTIVATED'
 });
 
+export const SIM_STATUS = Object.freeze({
+  INITIAL: 'INITIAL',
+  ACTIVE: 'ACTIVE',
+  TEMP_DISCONNECT: 'TEMP_DISCONNECT'
+});
+
 export const HOLDER_TYPE = Object.freeze({
   ADMIN: 'ADMIN',
   DISTRIBUTOR: 'DISTRIBUTOR',

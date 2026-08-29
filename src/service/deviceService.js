@@ -21,7 +21,7 @@ import {
   getDeviceSummary
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
-import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getInventory, getTelemetryList, updateInventory } from '../dao';
+import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getDeviceInventory, getTelemetryList, updateDeviceInventory } from '../dao';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -97,12 +97,12 @@ export const createDevices = async (payload, owner_id, owner_type) => {
     throw new CustomError(UN_PROCESSABLE_ENTITY, 'device_id is required.');
   }
 
-  const inventory = await getInventory({ qr_uuid });
-  if (!inventory) {
+  const deviceInventory = await getDeviceInventory({ qr_uuid });
+  if (!deviceInventory) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
   }
 
-  const { device_id, device_type, sim_number, name  } = inventory;
+  const { device_id, device_type, sim_number, name  } = deviceInventory;
   const existing = await getDeviceByDeviceIdIgnoreCase(device_id);
   if (existing) {
     throw new CustomError(CONFLICT, MESSAGE_CONSTANTS.DEVICE_ALREADY_EXISTS);
@@ -124,7 +124,7 @@ export const createDevices = async (payload, owner_id, owner_type) => {
     await createDeviceState({ device_id: created.id });
 
     //Update inventory status to IN_USE
-    await updateInventory(inventory, { status: INVENTORY_STATUS.ACTIVATED });
+    await updateDeviceInventory(deviceInventory, { status: INVENTORY_STATUS.ACTIVATED });
     return {
       message: MESSAGE_CONSTANTS.DEVICE_CREATE_SUCCESS,
       data: created

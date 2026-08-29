@@ -1,4 +1,5 @@
 import cron from 'node-cron'
+import { syncSimInventory } from '../cron';
 // import { saveGpsLocation } from '../gps/gpsIngestionService'
 
 // cron.schedule('*/10 * 0-1 * * 2-5', async () => {
@@ -39,4 +40,11 @@ import cron from 'node-cron'
 //   source: 'gps_lbs'
 // })
 
+cron.schedule('*/1 * * * *', async () => {
+//   await syncSimInventory();
+// syncSimInventory();
+}, {
+  scheduled: true,
+  timezone: "Asia/Kolkata"
+});
 module.exports = cron

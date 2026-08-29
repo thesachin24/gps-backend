@@ -3,8 +3,8 @@ import sequelize from "./index";
 import Holder from "./holder";
 import { HOLDER_TYPE, INVENTORY_STATUS } from "../constants";
 
-const Inventory = sequelize.define(
-  "inventory",
+const DeviceInventory = sequelize.define(
+  "device_inventory",
   {
     id: {
       allowNull: false,
@@ -67,21 +67,21 @@ const Inventory = sequelize.define(
     },
   },
   {
-    tableName: "inventory",
+    tableName: "device_inventory",
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
   }
 );
 
-Inventory.belongsTo(Holder, {
+DeviceInventory.belongsTo(Holder, {
   foreignKey: "holder_id",
   as: "holder",
 });
 
-Holder.hasMany(Inventory, {
+Holder.hasMany(DeviceInventory, {
   foreignKey: "holder_id",
   as: "inventory",
 });
 
-export default Inventory;
+export default DeviceInventory;

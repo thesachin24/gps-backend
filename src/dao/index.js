@@ -15,5 +15,6 @@ export * from './assetGeofenceMapDao';
 export * from './eventDao';
 export * from './couponDao';
 export * from './orderDao';
-export * from './inventoryDao';
+export * from './deviceInventoryDao';
+export * from './simInventoryDao';
 export * from './transactionDao';
