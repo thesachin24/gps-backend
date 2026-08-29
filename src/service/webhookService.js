@@ -137,7 +137,7 @@ export const _proceed = async (event, payment, order) => {
       const result = await activateSim({
         // mobileNo: req.body.mobileNo,
         sim_number: orderInfo.subscription.sim_number,
-        planCode: orderInfo.plan_name
+        planCode: "PKG_28670"
       });
      } catch (error) {
       //TODO: Handle Error - Save in DB - Failed to Activate SIM

@@ -147,7 +147,7 @@ const getAirtelHeaders = (token) => ({
  */
 export const activateSim = async (params) => {
   try {
-    const { sim_number = "", planCode = "" } = params || {};
+    const { sim_number = "", planCode = "PKG_28670" } = params || {};
 
     if (!sim_number) {
       throw new Error("sim_number is required");
