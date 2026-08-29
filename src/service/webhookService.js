@@ -133,11 +133,19 @@ export const _proceed = async (event, payment, order) => {
   //Perform Add Credit | Add Subscription - For New Order
   if (event === "order.paid") {
      //Activate SIM
-     const result = await activateSim({
-      // mobileNo: req.body.mobileNo,
-      sim_number: orderInfo.subscription.sim_number,
-      planCode: orderInfo.plan_name
-    });
+     try {
+      const result = await activateSim({
+        // mobileNo: req.body.mobileNo,
+        sim_number: orderInfo.subscription.sim_number,
+        planCode: orderInfo.plan_name
+      });
+     } catch (error) {
+      //TODO: Handle Error - Save in DB - Failed to Activate SIM
+      // Save  Logs
+        // 1. Sim Error
+        // 2. Webhook Errors
+        // 3. Order Errors
+     }
     //Perform Order Action
 
     await _performOrderAction(orderInfo);
