@@ -41,12 +41,12 @@ import {
   TEST_NUMBERS
 } from '../constants';
 
-export const createOrUpdateDevice = async (user_id, device_id, device_type, push_token) => {
+export const createOrUpdateDevice = async (user_id, device_id, device_type, push_token, metadata) => {
   const device = await getUserDevice({ user_id, device_id, device_type });
   if (!device) {
-    createUserDevice({ user_id, device_id, device_type, push_token });
+    createUserDevice({ user_id, device_id, device_type, push_token, metadata });
   } else {
-    updateUserDevice({ device_id, device_type }, { push_token });
+    updateUserDevice({ device_id, device_type }, { push_token, metadata });
   }
 };
 /**
@@ -56,7 +56,7 @@ export const createOrUpdateDevice = async (user_id, device_id, device_type, push
  * @property {int} device_type - type of the login device.
  * @returns {object}
  */
-const getTokenForUser = async (user, device_id, device_type, push_token) => {
+const getTokenForUser = async (user, device_id, device_type, push_token, metadata) => {
   const { id, is_blocked } = user;
   const data = {};
   const token = await getRandomString(SIXTY);
@@ -64,12 +64,13 @@ const getTokenForUser = async (user, device_id, device_type, push_token) => {
     user_id: id,
     device_id,
     device_type,
-    token
+    token,
+    metadata
   };
   if (is_blocked) {
     throw new CustomError(UNAUTHORIZED, MESSAGE_CONSTANTS.DISABLED_USER);
   }
-  await createOrUpdateDevice(id, device_id, device_type, push_token);
+  await createOrUpdateDevice(id, device_id, device_type, push_token, metadata);
   //Activate USer
   const userData = { is_active: 1, verification_code: 0 };
   const [tokenObject, userObject] = await Promise.all([
@@ -174,7 +175,7 @@ export const userLogin = async body => {
  * @returns {object}
  */
 export const userVerify = async body => {
-  const { phone, otp, device_id, device_type, push_token } = body;
+  const { phone, otp, device_id, device_type, push_token, metadata } = body;
   const user = await getUserWithIgnoreCase(MOBILE, phone, USER_LOGIN_FIELDS);
   if (!user) {
     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.USER_NOT_FOUND);
@@ -185,7 +186,7 @@ export const userVerify = async body => {
   if (user.verification_code != otp) {
     throw new CustomError(UN_PROCESSABLE_ENTITY, MESSAGE_CONSTANTS.INVALID_OTP);
   }
-  return getTokenForUser(user, device_id, device_type, push_token);
+  return getTokenForUser(user, device_id, device_type, push_token, metadata);
 };
 
 /**

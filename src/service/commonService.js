@@ -249,9 +249,9 @@ export const getSubscriptionPlansData = async (registration_id) => {
 
 
 export const foregroundBackgroundData = async (body, registration_id) => {
-  const { device_id, device_type, push_token } = body;
+  const { device_id, device_type, push_token, metadata } = body;
   if(registration_id){
-    createOrUpdateDevice(registration_id, device_id, device_type, push_token)
+    createOrUpdateDevice(registration_id, device_id, device_type, push_token, metadata)
   }
   // const options = await getAllOptionsDashboard()
   return {
