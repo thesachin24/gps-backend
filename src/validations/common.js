@@ -14,7 +14,8 @@ export const common = {
     body: Joi.object({
       device_type: Joi.string().valid('WEB', 'ANDROID', 'IOS').required(),
       device_id: Joi.string().allow('', null),
-      push_token: Joi.string().allow('', null)
+      push_token: Joi.string().allow('', null),
+      metadata: Joi.object().allow('', null)
     })
   },
   imageGeneration: {

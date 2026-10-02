@@ -23,6 +23,10 @@ const UserDevice = sequelize.define(
     push_token: {
       allowNull: true,
       type: Sequelize.STRING
+    },
+    metadata: {
+      allowNull: true,
+      type: Sequelize.JSONB
     }
   },
   {
