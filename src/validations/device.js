@@ -64,8 +64,13 @@ export const device = {
       id: Joi.number().integer().positive().required()
     },
     query: {
-      from: Joi.date().iso().optional(),
-      to: Joi.date().iso().optional(),
+      from: Joi.string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+  
+      to: Joi.string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
       stop_duration: Joi.number().integer().min(1).max(1440).optional().default(15)
     }
   },
@@ -74,8 +79,13 @@ export const device = {
       id: Joi.number().integer().positive().required()
     },
     query: {
-      from: Joi.date().iso().optional(),
-      to: Joi.date().iso().optional()
+      from: Joi.string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+  
+      to: Joi.string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
     }
   }
 };

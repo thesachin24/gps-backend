@@ -68,10 +68,7 @@ export const getDeviceTripsData = async payload => {
   const stopThresholdMs =
     (Number(stop_duration) || DEFAULT_STOP_THRESHOLD_MINUTES) * 60 * 1000;
 
-  const fromDate = from ? new Date(from) : null;
-  const toDate = to ? new Date(to) : null;
-
-  const locations = await getDeviceTripsByDeviceAndDateRange(id, fromDate, toDate);
+  const locations = await getDeviceTripsByDeviceAndDateRange(id, from, to);
 
   if (!locations || !locations.length) {
     return {

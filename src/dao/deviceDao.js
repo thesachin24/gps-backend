@@ -121,19 +121,28 @@ export const deleteDevice = where =>
     where
   });
 
-
-export const getDeviceTripsByDeviceAndDateRange = (deviceId, from, to) => {
-  const where = { device_id: deviceId };
-  if (from || to) {
-    where.recorded_at = {};
-    if (from) where.recorded_at[Sequelize.Op.gte] = from;
-    if (to) where.recorded_at[Sequelize.Op.lte] = to;
-  }
-  return Telemetry.findAll({
-    where,
-    order: [['recorded_at', 'ASC']]
-  });
-};
+  export const getDeviceTripsByDeviceAndDateRange = (deviceId, from, to) => {
+    const where = {
+      device_id: deviceId,
+    };
+  
+    if (from || to) {
+      where.recorded_at = {};
+  
+      if (from) {
+        where.recorded_at[Sequelize.Op.gte] = `${from} 00:00:00`;
+      }
+  
+      if (to) {
+        where.recorded_at[Sequelize.Op.lte] = `${to} 23:59:59.999`;
+      }
+    }
+  
+    return Telemetry.findAll({
+      where,
+      order: [['recorded_at', 'ASC']],
+    });
+  };
 
 import { getDistance } from 'geolib';
 import { formatSecondsToHoursAndMinutes } from './commonDao';
