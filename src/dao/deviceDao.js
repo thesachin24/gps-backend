@@ -203,13 +203,13 @@ export const calculateSummary = (records) => {
   }
 
   return {
-    totalDistance: Number(totalDistance.toFixed(2)),
-    totalRunTime,
-    stoppedTime,
-    maxSpeed,
+    totalDistance: Number(totalDistance.toFixed(2)), // in km
+    totalRunTime, // in seconds
+    stoppedTime, // in seconds
+    maxSpeed, // in km/h
     avgSpeed: movingCount
       ? Math.round(speedSum / movingCount)
-      : 0,
+      : 0, // in km/h
   };
 };
 

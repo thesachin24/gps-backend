@@ -65,6 +65,7 @@ const buildTrip = (points, index) => {
 
 export const getDeviceTripsData = async payload => {
   const { id, from, to, stop_duration } = payload;
+
   const stopThresholdMs =
     (Number(stop_duration) || DEFAULT_STOP_THRESHOLD_MINUTES) * 60 * 1000;
 
@@ -73,7 +74,12 @@ export const getDeviceTripsData = async payload => {
   if (!locations || !locations.length) {
     return {
       message: MESSAGE_CONSTANTS.SUCCESS,
-      data: { trips: [], total_trips: 0, total_distance_km: 0, total_duration: '0s' }
+      data: {
+        trips: [],
+        total_trips: 0,
+        total_distance_km: 0,
+        total_duration: '0s'
+      }
     };
   }
 
@@ -97,19 +103,33 @@ export const getDeviceTripsData = async payload => {
     trips.push(buildTrip(currentTripPoints, trips.length));
   }
 
-  const totalDistanceKm = trips.reduce((sum, t) => sum + t.distance_km, 0);
-  const totalDurationMs = trips.reduce((sum, t) => sum + t.duration_ms, 0);
+  // Skip trips with distance < 0.01 km (10 meters)
+  const filteredTrips = trips.filter(trip => trip.distance_km >= 0.01);
 
-  trips.reverse();
-  trips.forEach((t, i) => { t.trip_number = i + 1; });
+  const totalDistanceKm = filteredTrips.reduce(
+    (sum, trip) => sum + trip.distance_km,
+    0
+  );
+
+  const totalDurationMs = filteredTrips.reduce(
+    (sum, trip) => sum + trip.duration_ms,
+    0
+  );
+
+  filteredTrips.reverse();
+
+  filteredTrips.forEach((trip, i) => {
+    trip.trip_number = i + 1;
+  });
 
   return {
     message: MESSAGE_CONSTANTS.SUCCESS,
     data: {
-      trips,
-      total_trips: trips.length,
+      trips: filteredTrips,
+      total_trips: filteredTrips.length,
       total_distance_km: Math.round(totalDistanceKm * 100) / 100,
       total_duration: formatDuration(totalDurationMs)
     }
   };
 };
+
