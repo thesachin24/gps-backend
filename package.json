@@ -7,6 +7,7 @@
     "start": "nodemon app.js --exec babel-node ",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sim:gps-delhi": "node scripts/publishDelhiGps.js",
+    "sim:gps-rohtak": "node scripts/publishRohtakGps.js",
     "sim:gps-gt06": "node scripts/replayGt06Device.js"
   },
   "author": "Sachin",
