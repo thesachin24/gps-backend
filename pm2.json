@@ -9,6 +9,11 @@
             "name": "gps-delhi-simulator",
             "script": "npm",
             "args" : "run sim:gps-delhi"
+        },
+        {
+            "name": "gps-rohtak-simulator",
+            "script": "npm",
+            "args" : "run sim:gps-rohtak"
         }
     ]
 }
