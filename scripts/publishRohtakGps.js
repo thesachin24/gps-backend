@@ -601,6 +601,9 @@ const ROHTAK_ROUTE = [
   { lat: 28.88990167, lng: 76.60577333, speed: 35, heading: 311 },
   { lat: 28.88928389, lng: 76.60672167, speed: 13, heading: 297 }
 ];
+
+ROHTAK_ROUTE.reverse();
+
 const toRadians = deg => (deg * Math.PI) / 180;
 const toDegrees = rad => (rad * 180) / Math.PI;
 
