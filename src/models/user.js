@@ -106,6 +106,11 @@ const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: {}, // For storing terms and conditions acceptance status, onboarding status, etc.
     }
   },
   {

@@ -9,7 +9,9 @@ import {
   getDeviceList,
   getDeviceSummary,
   getDeviceTrips,
-  updateDevice
+  updateDevice,
+  getDeviceDailyAnalytics,
+  getDeviceDailyAnalyticsData
 } from '../controller';
 import {
   sendCommand,
@@ -235,5 +237,22 @@ deviceRoutes.get('/:id/summary',
   validate(device.getDeviceSummary), 
   catchValidationErrors,
   getDeviceSummary
+);
+
+/**
+ * @swagger
+ * /devices/{id}/daily-analytics:
+ *   get:
+ *     description: Get device daily analytics
+ *     security:
+ *       - Bearer: []
+ *     tags:
+ *       - Device
+ */
+deviceRoutes.get('/:id/daily-analytics',
+  authenticate,
+  validate(device.getDeviceDailyAnalytics),
+  catchValidationErrors,
+  getDeviceDailyAnalyticsData
 );
 export default deviceRoutes;

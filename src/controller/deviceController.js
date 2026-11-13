@@ -14,7 +14,8 @@ import {
   deleteDevices,
   getDeviceTripsData,
   getAllDeviceLocationListData,
-  getDeviceSummaryData
+  getDeviceSummaryData,
+  getDeviceDailyAnalytics
 } from '../service';
 
 export const getDeviceList = async (req, res) => {
@@ -127,6 +128,17 @@ export const getDeviceSummary = async (req, res) => {
  } = req;
   try {
     const response = await getDeviceSummaryData({ id, from, to, owner_id: user_id });
+    return res.status(OK).json(response);
+  } catch (err) {
+    logger.error(err);
+    return res.status(err.status || SERVER_ERROR).json({ ...err, message: err.message });
+  }
+};
+
+export const getDeviceDailyAnalyticsData = async (req, res) => {
+  const { params: { id }, query: { days, stop_duration } } = req;
+  try {
+    const response = await getDeviceDailyAnalytics({ id, days, stop_duration });
     return res.status(OK).json(response);
   } catch (err) {
     logger.error(err);

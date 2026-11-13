@@ -28,6 +28,7 @@ export const USER_FIELDS = [
   "longitude",
   "createdAt",
   "onboarded",
+  "metadata",
 ];
 
 export const USER_LOGIN_FIELDS = [
@@ -62,6 +63,7 @@ export const USER_LOGIN_FIELDS = [
   "kyc_doc_back",
   "kyc_status",
   "onboarded",
+  "metadata",
   "created_at",
   "updated_at",
 ];

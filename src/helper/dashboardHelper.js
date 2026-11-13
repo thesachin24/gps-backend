@@ -3,6 +3,7 @@ import { DEFAULT_DASHOBARD_LIMIT, LAWYER_COMPLETENESS,
   USER_COMPLETENESS } from "../constants";
 import { getAllDeviceLocationList, getUser } from "../dao";
 import Sequelize from "sequelize";
+import { getDeviceDailyAnalytics } from "../service";
 
 const _getFilledValues = (dataObj, fields) => {
   var count = 0;
@@ -36,6 +37,7 @@ export const getListData = async (user_id) => {
       {
         // user_id: user_id
       },
+    getDeviceDailyAnalytics({ id: user_id })
     )
   ]);
   return {

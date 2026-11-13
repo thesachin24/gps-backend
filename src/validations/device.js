@@ -87,5 +87,14 @@ export const device = {
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional()
     }
+  },
+  getDeviceDailyAnalytics: {
+    params: {
+      id: Joi.number().integer().positive().required()
+    },
+    query: {
+      days: Joi.number().integer().min(1).max(365).optional().default(30),
+      stop_duration: Joi.number().integer().min(1).max(1440).optional().default(15)
+    }
   }
 };

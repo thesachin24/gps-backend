@@ -22,6 +22,7 @@ import {
 } from '../dao/deviceDao';
 import { CustomError } from '../utils';
 import { createDeviceState, deleteDeviceAssetMap, deleteDeviceState, getDeviceLocationList, getDeviceInventory, getTelemetryList, updateDeviceInventory } from '../dao';
+import { getDeviceDailyAnalytics } from './tripService';
 
 const pickUpdatableFields = payload => {
   const allowed = [
@@ -279,3 +280,14 @@ export const getDeviceSummaryData = async ({ id, from, to, owner_id }) => {
     data
   };
 };
+
+// export const getDeviceDailyAnalyticsData = async ({ id, days = 30, stop_duration = 15 }) => {
+//   const data = await getDeviceDailyAnalytics({ id, days, stop_duration });
+//   if (!data) {
+//     throw new CustomError(NOT_FOUND, MESSAGE_CONSTANTS.RESOURCE_NOT_FOUND);
+//   }
+//   return {
+//     message: MESSAGE_CONSTANTS.SUCCESS,
+//     data
+//   };
+// };
