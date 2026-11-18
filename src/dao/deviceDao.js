@@ -149,68 +149,130 @@ import { formatSecondsToHoursAndMinutes } from './commonDao';
 import Order from '../models/order';
 import User from '../models/user';
 
-export const calculateSummary = (records) => {
-  if (records.length < 2) {
-    return {
-      totalDistance: 0,
-      totalRunTime: 0,
-      stoppedTime: 0,
-      maxSpeed: 0,
-      avgSpeed: 0,
-    };
+
+const MOVING_SPEED_KMH = 3;
+const DEFAULT_STOP_THRESHOLD_MINUTES = 15;
+
+export const calculateSummary = (
+  records,
+  stopDuration = DEFAULT_STOP_THRESHOLD_MINUTES
+) => {
+  const result = {
+    totalDistance: 0,
+    totalRunTime: 0,
+    totalRunTimeSeconds: 0,
+    stoppedTime: 0,
+    stoppedTimeSeconds: 0,
+    maxSpeed: 0,
+    avgSpeed: 0,
+  };
+
+  if (!Array.isArray(records) || records.length < 2) {
+    return result;
   }
+
+  const stopThresholdMs =
+    (Number(stopDuration) || DEFAULT_STOP_THRESHOLD_MINUTES) * 60 * 1000;
+
+  const sortedRecords = [...records]
+    .filter((r) => {
+      const time = new Date(r.recorded_at).getTime();
+
+      return (
+        Number.isFinite(time) &&
+        Number.isFinite(Number(r.latitude)) &&
+        Number.isFinite(Number(r.longitude))
+      );
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.recorded_at).getTime() -
+        new Date(b.recorded_at).getTime()
+    );
 
   let totalDistance = 0;
   let totalRunTime = 0;
+  let totalRunTimeSeconds = 0;
   let stoppedTime = 0;
   let maxSpeed = 0;
-  let speedSum = 0;
-  let movingCount = 0;
+  let movingDistance = 0;
+  let stoppedTimeSeconds = 0;
 
-  for (let i = 1; i < records.length; i++) {
-    const prev = records[i - 1];
-    const curr = records[i];
+  const getSpeed = (record) => {
+    const speed = Number(record.speed_kmh ?? record.speed);
 
-    const seconds =
-      (new Date(curr.recorded_at).getTime() -
-        new Date(prev.recorded_at).getTime()) / 1000;
+    return Number.isFinite(speed) && speed >= 0 ? speed : null;
+  };
 
-    // Distance
-    totalDistance +=
+  for (let i = 1; i < sortedRecords.length; i++) {
+    const prev = sortedRecords[i - 1];
+    const curr = sortedRecords[i];
+
+    const prevTime = new Date(prev.recorded_at).getTime();
+    const currTime = new Date(curr.recorded_at).getTime();
+
+    const gap = currTime - prevTime;
+
+    // Ignore invalid intervals and long GPS gaps
+    if (gap <= 0 || gap > stopThresholdMs) {
+      continue;
+    }
+
+    const prevSpeed = getSpeed(prev);
+    const currSpeed = getSpeed(curr);
+
+    const isMoving =
+      (currSpeed !== null && currSpeed > MOVING_SPEED_KMH) ||
+      (prevSpeed !== null && prevSpeed > MOVING_SPEED_KMH);
+
+    const seconds = gap / 1000;
+
+    const distance =
       getDistance(
         {
-          latitude: prev.latitude,
-          longitude: prev.longitude,
+          latitude: Number(prev.latitude),
+          longitude: Number(prev.longitude),
         },
         {
-          latitude: curr.latitude,
-          longitude: curr.longitude,
+          latitude: Number(curr.latitude),
+          longitude: Number(curr.longitude),
         }
       ) / 1000;
 
-    // Moving
-    if (curr.speed >= 5) {
-      totalRunTime += seconds;
-      speedSum += curr.speed;
-      movingCount++;
-    } else {
-      stoppedTime += seconds;
+    if (!Number.isFinite(distance) || distance < 0) {
+      continue;
     }
 
-    if (curr.speed > maxSpeed) {
-      maxSpeed = curr.speed;
+    totalDistance += distance;
+
+    if (isMoving) {
+      totalRunTime += seconds / 60;
+      totalRunTimeSeconds += seconds;
+      movingDistance += distance;
+    } else {
+      stoppedTime += seconds / 60;
+      stoppedTimeSeconds += seconds;
+    }
+
+    if (currSpeed !== null && currSpeed > MOVING_SPEED_KMH) {
+      maxSpeed = Math.max(maxSpeed, currSpeed);
     }
   }
 
   return {
-    totalDistance: Number(totalDistance.toFixed(2)), // in km
-    totalRunTime, // in seconds
-    stoppedTime, // in seconds
-    maxSpeed, // in km/h
-    avgSpeed: movingCount
-      ? Math.round(speedSum / movingCount)
-      : 0, // in km/h
-  };
+    totalDistance: Number(totalDistance.toFixed(2)),
+    totalRunTime: Number(totalRunTime.toFixed(2)),
+    totalRunTimeSeconds: Number(totalRunTimeSeconds.toFixed(2)),
+    stoppedTime: Number(stoppedTime.toFixed(2)),
+    stoppedTimeSeconds: Number(stoppedTimeSeconds.toFixed(2)),
+    maxSpeed: Number(maxSpeed.toFixed(2)),
+    avgSpeed:
+      totalRunTimeSeconds > 0
+        ? Number(
+            ((movingDistance * 3600) / totalRunTimeSeconds).toFixed(0)
+          )
+        : 0,
+      };
 };
 
 export const getDeviceSummary = async ({ id, from, to, owner_id }) => {
