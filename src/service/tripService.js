@@ -418,6 +418,7 @@ export const getDeviceDailyAnalytics = async (payload) => {
     (result, item) => {
       result.total_distance_km += item.distance_km;
       result.total_runtime_minutes += item.runtime_minutes;
+      result.total_runtime_seconds += item.runtime_seconds;
       result.total_trips += item.total_trips;
 
       result.max_speed_kmh = Math.max(result.max_speed_kmh, item.max_speed_kmh);
@@ -427,6 +428,7 @@ export const getDeviceDailyAnalytics = async (payload) => {
     {
       total_distance_km: 0,
       total_runtime_minutes: 0,
+      total_runtime_seconds: 0,
       total_trips: 0,
       max_speed_kmh: 0,
     },
