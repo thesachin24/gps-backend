@@ -144,6 +144,7 @@ export const DEVICE_FIELD = [
   "device_name",
   "device_type",
   "firmware_version",
+  "connection_type",
   "sim_number",
   "owner_id",
   // "owner_type",

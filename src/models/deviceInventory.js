@@ -33,6 +33,11 @@ const DeviceInventory = sequelize.define(
       type: Sequelize.STRING,
     },
 
+    connection_type: {
+      type: Sequelize.ENUM("WIRELESS", "WIRED"),
+      defaultValue: "WIRED",
+    },
+
     status: {
       allowNull: false,
       type: Sequelize.ENUM(

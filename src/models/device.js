@@ -28,6 +28,10 @@ const Device = sequelize.define(
       type: Sequelize.ENUM("GPS_TRACKER", "OBD", "DASHCAM"),
       defaultValue: "GPS_TRACKER",
     },
+    connection_type: {
+      type: Sequelize.ENUM("WIRELESS", "WIRED"),
+      defaultValue: "WIRED",
+    },
     firmware_version: {
       type: Sequelize.STRING,
       allowNull: true,

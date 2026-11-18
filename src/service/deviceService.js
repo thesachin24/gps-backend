@@ -30,6 +30,7 @@ const pickUpdatableFields = payload => {
     'device_name',
     'device_type',
     'firmware_version',
+    'connection_type',
     'sim_number',
     'owner_id',
     'owner_type',
@@ -115,6 +116,7 @@ export const createDevices = async (payload, owner_id, owner_type) => {
     device_id,
     device_name: payload.device_name != null ? payload.device_name : null,
     device_type: device_type || 'GPS_TRACKER',
+    connection_type: payload.connection_type || 'WIRELESS',
     sim_number,
     is_active: true
   };
